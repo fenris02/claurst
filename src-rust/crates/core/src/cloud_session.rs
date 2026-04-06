@@ -127,6 +127,7 @@ pub fn cloud_to_message(cloud: &CloudMessage) -> Message {
 // ---------------------------------------------------------------------------
 
 /// Thin client for the cloud session REST API.
+#[derive(Debug)]
 pub struct CloudSessionClient {
     base_url: String,
     access_token: String,

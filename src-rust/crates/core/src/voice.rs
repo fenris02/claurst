@@ -97,9 +97,8 @@ pub fn check_voice_availability(tokens: Option<&OAuthTokens>) -> VoiceAvailabili
     }
 
     // Voice requires first-party OAuth; API key alone is not sufficient
-    let tokens = match tokens {
-        Some(t) => t,
-        None => return VoiceAvailability::RequiresOAuth,
+    let Some(tokens) = tokens else {
+        return VoiceAvailability::RequiresOAuth;
     };
 
     // OAuthTokens stores scopes as Vec<String>
@@ -182,6 +181,7 @@ pub enum VoiceEvent {
 
 /// Hold-to-talk voice recorder that captures microphone audio and sends it to
 /// a Whisper-compatible speech-to-text API.
+#[derive(Debug)]
 pub struct VoiceRecorder {
     is_enabled: bool,
     is_recording: Arc<AtomicBool>,
@@ -269,6 +269,7 @@ impl VoiceRecorder {
 
     /// Stop recording.  The transcription request is sent immediately after
     /// the audio capture loop exits.
+    #[allow(clippy::unused_async)]
     pub async fn stop_recording(&mut self) -> anyhow::Result<()> {
         self.is_recording.store(false, Ordering::SeqCst);
         Ok(())
@@ -525,7 +526,6 @@ async fn transcribe_audio(
 // Global singleton
 // ---------------------------------------------------------------------------
 
-
 static GLOBAL_VOICE_RECORDER: std::sync::LazyLock<Arc<Mutex<VoiceRecorder>>> =
     std::sync::LazyLock::new(|| Arc::new(Mutex::new(VoiceRecorder::new(VoiceConfig::default()))));
 
@@ -554,7 +554,10 @@ mod tests {
     fn tokens_with_scopes(scopes: Vec<&str>) -> OAuthTokens {
         OAuthTokens {
             access_token: "test_token".to_string(),
-            scopes: scopes.iter().map(std::string::ToString::to_string).collect(),
+            scopes: scopes
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
             ..Default::default()
         }
     }
@@ -588,7 +591,9 @@ mod tests {
 
     #[test]
     fn test_missing_all_scopes() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _guard = ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::remove_var(KILL_SWITCH_ENV) };
         let tokens = tokens_with_scopes(vec!["org:create_api_key"]);
@@ -610,7 +615,9 @@ mod tests {
 
     #[test]
     fn test_kill_switch_disables_voice() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _guard = ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::set_var(KILL_SWITCH_ENV, "1") };
         let tokens = tokens_with_scopes(vec!["user:inference", "user:profile"]);
@@ -623,7 +630,9 @@ mod tests {
 
     #[test]
     fn test_kill_switch_beats_no_auth() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _guard = ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::set_var(KILL_SWITCH_ENV, "true") };
         let result = check_voice_availability(None);

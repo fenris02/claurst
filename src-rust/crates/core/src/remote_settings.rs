@@ -38,6 +38,7 @@ pub const DEFAULT_POLLING_INTERVAL: Duration = Duration::from_hours(1);
 /// Stub: Returns empty managed settings.
 /// The free/OSS build does not fetch server-pushed security overlays or
 /// enterprise-managed settings from Anthropic's API.
+#[allow(clippy::unused_async)]
 pub async fn fetch_remote_managed_settings() -> Value {
     serde_json::json!({})
 }
@@ -98,6 +99,7 @@ struct RemoteSettingsResponse {
 // ---------------------------------------------------------------------------
 
 /// Manages fetching, caching, and background polling of remote-managed settings.
+#[derive(Debug)]
 pub struct RemoteSettingsManager {
     config: RemoteSettingsConfig,
     cache_path: PathBuf,
@@ -141,16 +143,18 @@ impl RemoteSettingsManager {
     fn auth_headers(&self) -> Option<std::collections::HashMap<String, String>> {
         let mut headers = std::collections::HashMap::new();
         if let Some(ref key) = self.config.api_key
-            && !key.is_empty() {
-                headers.insert("x-api-key".to_string(), key.clone());
-                return Some(headers);
-            }
+            && !key.is_empty()
+        {
+            headers.insert("x-api-key".to_string(), key.clone());
+            return Some(headers);
+        }
         if let Some(ref token) = self.config.oauth_token
-            && !token.is_empty() {
-                headers.insert("Authorization".to_string(), format!("Bearer {token}"));
-                headers.insert("anthropic-beta".to_string(), "oauth-2025-04-20".to_string());
-                return Some(headers);
-            }
+            && !token.is_empty()
+        {
+            headers.insert("Authorization".to_string(), format!("Bearer {token}"));
+            headers.insert("anthropic-beta".to_string(), "oauth-2025-04-20".to_string());
+            return Some(headers);
+        }
         None
     }
 
@@ -278,9 +282,7 @@ impl RemoteSettingsManager {
             .as_deref()
             .and_then(|t| serde_json::from_str(t).ok());
 
-        let cached_checksum = cached_settings
-            .as_ref()
-            .map(compute_checksum_from_settings);
+        let cached_checksum = cached_settings.as_ref().map(compute_checksum_from_settings);
 
         match self.fetch_with_retry(cached_checksum.as_deref()).await {
             Ok(Some(new_settings)) => {

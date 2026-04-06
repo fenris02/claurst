@@ -52,6 +52,7 @@ impl Attachment {
 }
 
 /// Context passed to `get_attachments`.
+#[derive(Debug)]
 pub struct AttachmentContext<'a> {
     pub project_root: &'a Path,
     pub working_dir: &'a Path,
@@ -103,34 +104,35 @@ pub fn get_ide_context() -> Option<String> {
         let path = entry.path();
         if path.extension().is_some_and(|e| e == "lock")
             && let Ok(content) = std::fs::read_to_string(&path)
-                && let Ok(info) = serde_json::from_str::<serde_json::Value>(&content) {
-                    let pid = info["pid"].as_u64().unwrap_or(0);
-                    if !is_pid_alive(pid) {
-                        continue;
-                    }
-                    let ide_name = info["ideName"].as_str().unwrap_or("IDE");
-                    let workspace = info["workspaceFolders"]
-                        .as_array()
-                        .and_then(|a| a.first())
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
-                    let mut parts = vec![format!("IDE: {}", ide_name)];
-                    if !workspace.is_empty() {
-                        parts.push(format!("workspace: {workspace}"));
-                    }
-                    // Active file/selection if present
-                    if let Some(file) = info["activeFile"].as_str() {
-                        parts.push(format!("active file: {file}"));
-                        if let (Some(start), Some(end)) = (
-                            info["selectionStart"].as_u64(),
-                            info["selectionEnd"].as_u64(),
-                        )
-                            && start != end {
-                                parts.push(format!("selection: L{start}-L{end}"));
-                            }
-                    }
-                    return Some(parts.join(", "));
+            && let Ok(info) = serde_json::from_str::<serde_json::Value>(&content)
+        {
+            let pid = info["pid"].as_u64().unwrap_or(0);
+            if !is_pid_alive(pid) {
+                continue;
+            }
+            let ide_name = info["ideName"].as_str().unwrap_or("IDE");
+            let workspace = info["workspaceFolders"]
+                .as_array()
+                .and_then(|a| a.first())
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let mut parts = vec![format!("IDE: {}", ide_name)];
+            if !workspace.is_empty() {
+                parts.push(format!("workspace: {workspace}"));
+            }
+            // Active file/selection if present
+            if let Some(file) = info["activeFile"].as_str() {
+                parts.push(format!("active file: {file}"));
+                if let (Some(start), Some(end)) = (
+                    info["selectionStart"].as_u64(),
+                    info["selectionEnd"].as_u64(),
+                ) && start != end
+                {
+                    parts.push(format!("selection: L{start}-L{end}"));
                 }
+            }
+            return Some(parts.join(", "));
+        }
     }
     None
 }
@@ -197,15 +199,16 @@ fn scan_modified_files(dir: &Path, since_secs: u64, out: &mut Vec<String>, depth
         if path.is_dir() {
             scan_modified_files(&path, since_secs, out, depth + 1);
         } else if let Ok(meta) = entry.metadata()
-            && let Ok(modified) = meta.modified() {
-                let mtime = modified
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-                if mtime >= since_secs {
-                    out.push(path.to_string_lossy().to_string());
-                }
+            && let Ok(modified) = meta.modified()
+        {
+            let mtime = modified
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            if mtime >= since_secs {
+                out.push(path.to_string_lossy().to_string());
             }
+        }
     }
 }
 

@@ -38,6 +38,7 @@ pub enum SessionEvent {
 // ---------------------------------------------------------------------------
 
 /// Manages remote session listing and background sync.
+#[derive(Debug)]
 pub struct RemoteSessionManager {
     base_url: String,
     access_token: String,
@@ -136,6 +137,7 @@ impl RemoteSessionManager {
 // ---------------------------------------------------------------------------
 
 /// `WebSocket` client for real-time session events.
+#[derive(Debug)]
 pub struct SessionsWebSocket {
     pub ws_url: String,
     pub access_token: String,

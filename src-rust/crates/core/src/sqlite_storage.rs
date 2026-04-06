@@ -7,6 +7,7 @@
 use std::path::Path;
 
 /// A persistent SQLite session + message store.
+#[derive(Debug)]
 pub struct SqliteSessionStore {
     conn: rusqlite::Connection,
 }

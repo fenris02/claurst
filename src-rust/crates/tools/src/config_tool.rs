@@ -119,7 +119,9 @@ impl Tool for ConfigTool {
                     let b = match new_value.as_bool() {
                         Some(b) => b,
                         None => {
-                            return ToolResult::error("'verbose' must be true or false".to_string());
+                            return ToolResult::error(
+                                "'verbose' must be true or false".to_string(),
+                            );
                         }
                     };
                     settings.config.verbose = b;

@@ -26,6 +26,7 @@ pub fn estimate_messages_tokens(messages: &[Message]) -> u64 {
 }
 
 /// Context-window info for a model / token count pair.
+#[derive(Debug)]
 pub struct ContextUsage {
     pub used: u64,
     pub total: u64,
@@ -123,11 +124,12 @@ pub fn merge_consecutive_text_blocks(blocks: Vec<ContentBlock>) -> Vec<ContentBl
     let mut result: Vec<ContentBlock> = Vec::new();
     for block in blocks {
         if let ContentBlock::Text { text } = &block
-            && let Some(ContentBlock::Text { text: prev_text }) = result.last_mut() {
-                prev_text.push('\n');
-                prev_text.push_str(text);
-                continue;
-            }
+            && let Some(ContentBlock::Text { text: prev_text }) = result.last_mut()
+        {
+            prev_text.push('\n');
+            prev_text.push_str(text);
+            continue;
+        }
         result.push(block);
     }
     result
@@ -145,10 +147,11 @@ pub fn truncate_message_content(msg: &mut Message, max_chars: usize) {
         MessageContent::Blocks(blocks) => {
             for block in blocks.iter_mut() {
                 if let ContentBlock::Text { text } = block
-                    && text.len() > max_chars {
-                        text.truncate(max_chars);
-                        text.push_str("\u{2026}[truncated]");
-                    }
+                    && text.len() > max_chars
+                {
+                    text.truncate(max_chars);
+                    text.push_str("\u{2026}[truncated]");
+                }
             }
         }
     }

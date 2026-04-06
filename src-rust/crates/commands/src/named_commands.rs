@@ -106,7 +106,9 @@ impl NamedCommand for AgentsCommand {
                 let name = match args.get(1).copied() {
                     Some(n) => n,
                     None => {
-                        return CommandResult::Error("Usage: claude agents edit <name>".to_string());
+                        return CommandResult::Error(
+                            "Usage: claude agents edit <name>".to_string(),
+                        );
                     }
                 };
                 CommandResult::Message(format!(

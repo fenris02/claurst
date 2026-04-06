@@ -891,8 +891,7 @@ pub mod config {
     }
 
     /// Configuration for a file formatter tool.
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    #[derive(Default)]
+    #[derive(Debug, Clone, Serialize, Deserialize, Default)]
     pub struct FormatterConfig {
         /// Command to run, e.g. `["prettier", "--write"]`.
         pub command: Vec<String>,
@@ -902,8 +901,6 @@ pub mod config {
         #[serde(default)]
         pub disabled: bool,
     }
-
-    
 
     #[derive(Debug, Clone, Serialize, Deserialize, Default)]
     pub struct ProjectSettings {
@@ -972,9 +969,7 @@ pub mod config {
                 Some("mistral") => "mistral-large-latest",
                 Some("xai") => "grok-2",
                 Some("openrouter") => "anthropic/claude-sonnet-4",
-                Some("togetherai" | "together-ai") => {
-                    "meta-llama/Llama-3.3-70B-Instruct-Turbo"
-                }
+                Some("togetherai" | "together-ai") => "meta-llama/Llama-3.3-70B-Instruct-Turbo",
                 Some("perplexity") => "sonar-pro",
                 Some("cohere") => "command-r-plus",
                 Some("deepinfra") => "meta-llama/Llama-3.3-70B-Instruct",
@@ -1111,7 +1106,9 @@ pub mod config {
                 tokens
             };
 
-            tokens.effective_credential().map(|cred| (cred.to_string(), tokens.uses_bearer_auth()))
+            tokens
+                .effective_credential()
+                .map(|cred| (cred.to_string(), tokens.uses_bearer_auth()))
         }
 
         /// Resolve the API base URL, checking `ANTHROPIC_BASE_URL` first.
@@ -1583,6 +1580,7 @@ pub mod context {
 
     /// Builds the system-level and user-level context that gets prepended to
     /// every conversation with the model.
+    #[derive(Debug)]
     pub struct ContextBuilder {
         cwd: PathBuf,
         disable_claude_mds: bool,
@@ -1632,9 +1630,10 @@ pub mod context {
             parts.push(format!("Today's date is {date}."));
 
             if !self.disable_claude_mds
-                && let Some(claude_md) = self.find_and_read_claude_md().await {
-                    parts.push(claude_md);
-                }
+                && let Some(claude_md) = self.find_and_read_claude_md().await
+            {
+                parts.push(claude_md);
+            }
 
             parts.join("\n\n")
         }
@@ -1681,13 +1680,14 @@ pub mod context {
                     .join(".claurst")
                     .join(crate::constants::CLAUDE_MD_FILENAME);
                 if global_claude_md.exists()
-                    && let Ok(content) = tokio::fs::read_to_string(&global_claude_md).await {
-                        claude_mds.push(format!(
-                            "# Memory (from {})\n{}",
-                            global_claude_md.display(),
-                            content
-                        ));
-                    }
+                    && let Ok(content) = tokio::fs::read_to_string(&global_claude_md).await
+                {
+                    claude_mds.push(format!(
+                        "# Memory (from {})\n{}",
+                        global_claude_md.display(),
+                        content
+                    ));
+                }
             }
 
             // Walk from cwd up to filesystem root, collecting AGENTS.md
@@ -1696,13 +1696,14 @@ pub mod context {
             while let Some(d) = dir {
                 let candidate = d.join(crate::constants::CLAUDE_MD_FILENAME);
                 if candidate.exists()
-                    && let Ok(content) = tokio::fs::read_to_string(&candidate).await {
-                        project_mds.push(format!(
-                            "# Project Memory (from {})\n{}",
-                            candidate.display(),
-                            content
-                        ));
-                    }
+                    && let Ok(content) = tokio::fs::read_to_string(&candidate).await
+                {
+                    project_mds.push(format!(
+                        "# Project Memory (from {})\n{}",
+                        candidate.display(),
+                        content
+                    ));
+                }
                 dir = d.parent();
             }
             // Reverse so outermost directory comes first
@@ -1801,18 +1802,18 @@ pub mod permissions {
         pub fn matches(&self, tool_name: &str, path: Option<&str>) -> bool {
             // Tool name check
             if let Some(ref rule_tool) = self.tool_name
-                && rule_tool != tool_name {
-                    return false;
-                }
+                && rule_tool != tool_name
+            {
+                return false;
+            }
             // Path pattern check — only when a pattern is specified
             if let Some(ref pattern) = self.path_pattern {
                 let Some(p) = path else {
                     // Rule requires a path but none was provided → no match
                     return false;
                 };
-                let pat = match glob::Pattern::new(pattern) {
-                    Ok(pat) => pat,
-                    Err(_) => return false,
+                let Ok(pat) = glob::Pattern::new(pattern) else {
+                    return false;
                 };
                 if !pat.matches(p) {
                     return false;
@@ -1891,9 +1892,7 @@ pub mod permissions {
         match level {
             PermissionLevel::Execute => {
                 let cmd = path.unwrap_or(description);
-                format!(
-                    "Bash wants to run: `{cmd}`\nThis will execute a shell command."
-                )
+                format!("Bash wants to run: `{cmd}`\nThis will execute a shell command.")
             }
             PermissionLevel::Write => {
                 let target = path.unwrap_or(description);
@@ -1926,6 +1925,7 @@ pub mod permissions {
 
     /// Pending permission request waiting for resolution (e.g. from a bridge
     /// remote peer or the interactive TUI dialog).
+    #[derive(Debug)]
     pub struct PendingPermission {
         pub tool_use_id: String,
         pub created_at: std::time::Instant,
@@ -1934,6 +1934,7 @@ pub mod permissions {
 
     /// Central permission manager: holds mode, session rules, persistent
     /// rules, and any in-flight pending decisions.
+    #[derive(Debug)]
     pub struct PermissionManager {
         pub mode: crate::config::PermissionMode,
         /// Rules added during this session only.
@@ -2175,6 +2176,7 @@ pub mod permissions {
     ///
     /// Uses simple mode-based rules.  For rule-based evaluation backed by a
     /// `PermissionManager`, use `ManagedAutoPermissionHandler` instead.
+    #[derive(Debug)]
     pub struct AutoPermissionHandler {
         pub mode: crate::config::PermissionMode,
     }
@@ -2211,6 +2213,7 @@ pub mod permissions {
     ///
     /// Uses simple mode-based rules.  For rule-based evaluation backed by a
     /// `PermissionManager`, use `ManagedInteractivePermissionHandler`.
+    #[derive(Debug)]
     pub struct InteractivePermissionHandler {
         pub mode: crate::config::PermissionMode,
     }
@@ -2243,6 +2246,7 @@ pub mod permissions {
     ///
     /// Delegates to `PermissionManager::evaluate`; converts `Ask` decisions
     /// into `Deny` (no interactive prompt available in headless mode).
+    #[derive(Debug)]
     pub struct ManagedAutoPermissionHandler {
         pub manager: Arc<Mutex<PermissionManager>>,
     }
@@ -2278,6 +2282,7 @@ pub mod permissions {
     ///
     /// Delegates to `PermissionManager::evaluate`; passes `Ask` decisions
     /// through so the TUI dialog can display them.
+    #[derive(Debug)]
     pub struct ManagedInteractivePermissionHandler {
         pub manager: Arc<Mutex<PermissionManager>>,
     }
@@ -2656,15 +2661,14 @@ pub mod history {
                 let path = entry.path();
                 if path.extension().and_then(|s| s.to_str()) == Some("json")
                     && let Ok(content) = tokio::fs::read_to_string(&path).await
-                        && let Ok(session) =
-                            serde_json::from_str::<ConversationSession>(&content)
-                        {
-                            sessions.push(session);
-                        }
+                    && let Ok(session) = serde_json::from_str::<ConversationSession>(&content)
+                {
+                    sessions.push(session);
+                }
             }
         }
 
-        sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        sessions.sort_by_key(|b| std::cmp::Reverse(b.updated_at));
         sessions
     }
 
@@ -2751,9 +2755,10 @@ pub mod history {
             .filter(|s| {
                 // Check title
                 if let Some(ref title) = s.title
-                    && title.to_lowercase().contains(&lower_query) {
-                        return true;
-                    }
+                    && title.to_lowercase().contains(&lower_query)
+                {
+                    return true;
+                }
                 // Check tags
                 if s.tags
                     .iter()
@@ -2985,9 +2990,12 @@ pub mod hooks {
             // Apply tool filter if set
             if let Some(ref filter) = entry.tool_filter
                 && let Some(ref tool) = ctx.tool_name
-                    && !filter.is_empty() && filter != tool && filter != "*" {
-                        continue;
-                    }
+                && !filter.is_empty()
+                && filter != tool
+                && filter != "*"
+            {
+                continue;
+            }
 
             debug!(command = %entry.command, event = ?event, "Running hook");
 
@@ -3281,7 +3289,6 @@ pub mod tasks {
 
     use chrono::{DateTime, Utc};
     use dashmap::DashMap;
-    
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
 
@@ -3346,6 +3353,7 @@ pub mod tasks {
     }
 
     /// Thread-safe registry of background tasks.
+    #[derive(Debug)]
     pub struct TaskRegistry {
         tasks: Arc<DashMap<String, BackgroundTask>>,
     }
@@ -3425,7 +3433,8 @@ pub mod tasks {
     }
 
     /// The process-global task registry singleton.
-    static GLOBAL_REGISTRY: std::sync::LazyLock<TaskRegistry> = std::sync::LazyLock::new(TaskRegistry::new);
+    static GLOBAL_REGISTRY: std::sync::LazyLock<TaskRegistry> =
+        std::sync::LazyLock::new(TaskRegistry::new);
 
     /// Return a reference to the process-global `TaskRegistry`.
     #[must_use]

@@ -247,9 +247,10 @@ pub fn transcript_path(project_root: &Path, session_id: &str) -> PathBuf {
 pub async fn write_transcript_entry(path: &Path, entry: &TranscriptEntry) -> crate::Result<()> {
     // Guard: do not grow files beyond the cap.
     if let Ok(meta) = tokio::fs::metadata(path).await
-        && meta.len() >= MAX_TRANSCRIPT_BYTES {
-            return Ok(());
-        }
+        && meta.len() >= MAX_TRANSCRIPT_BYTES
+    {
+        return Ok(());
+    }
 
     // Serialise to a single compact JSON line terminated by '\n'.
     let mut line = serde_json::to_string(entry)?;
@@ -306,11 +307,13 @@ pub async fn load_transcript(path: &Path) -> crate::Result<Vec<TranscriptEntry>>
             continue;
         }
         // Cheap structural check before full parse.
-        if (trimmed.contains("\"type\":\"tombstone\"") || trimmed.contains("\"type\": \"tombstone\""))
+        if (trimmed.contains("\"type\":\"tombstone\"")
+            || trimmed.contains("\"type\": \"tombstone\""))
             && let Ok(entry) = serde_json::from_str::<TranscriptEntry>(trimmed)
-                && let TranscriptEntry::Tombstone(t) = entry {
-                    tombstoned.insert(t.deleted_uuid);
-                }
+            && let TranscriptEntry::Tombstone(t) = entry
+        {
+            tombstoned.insert(t.deleted_uuid);
+        }
     }
 
     // Second pass: collect valid non-tombstoned entries.
@@ -334,9 +337,10 @@ pub async fn load_transcript(path: &Path) -> crate::Result<Vec<TranscriptEntry>>
         }
 
         if let Some(uuid) = entry.uuid()
-            && tombstoned.contains(uuid) {
-                continue;
-            }
+            && tombstoned.contains(uuid)
+        {
+            continue;
+        }
 
         entries.push(entry);
     }
@@ -374,9 +378,8 @@ pub async fn list_sessions(project_root: &Path) -> crate::Result<Vec<SessionSumm
             None => continue,
         };
 
-        let meta = match tokio::fs::metadata(&path).await {
-            Ok(m) => m,
-            Err(_) => continue,
+        let Ok(meta) = tokio::fs::metadata(&path).await else {
+            continue;
         };
         let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
 
@@ -393,7 +396,7 @@ pub async fn list_sessions(project_root: &Path) -> crate::Result<Vec<SessionSumm
     }
 
     // Sort newest-first.
-    sessions.sort_by(|a, b| b.mtime.cmp(&a.mtime));
+    sessions.sort_by_key(|b| std::cmp::Reverse(b.mtime));
     Ok(sessions)
 }
 
@@ -423,13 +426,11 @@ pub async fn tombstone_entry(path: &Path, uuid: &str) -> crate::Result<()> {
 async fn read_session_tail_metadata(path: &Path) -> (Option<String>, Option<String>) {
     const TAIL_BUF: u64 = 65_536; // 64 KB
 
-    let file = match tokio::fs::File::open(path).await {
-        Ok(f) => f,
-        Err(_) => return (None, None),
+    let Ok(file) = tokio::fs::File::open(path).await else {
+        return (None, None);
     };
-    let meta = match file.metadata().await {
-        Ok(m) => m,
-        Err(_) => return (None, None),
+    let Ok(meta) = file.metadata().await else {
+        return (None, None);
     };
     let file_size = meta.len();
     if file_size == 0 {
@@ -464,17 +465,19 @@ async fn read_session_tail_metadata(path: &Path) -> (Option<String>, Option<Stri
             && (trimmed.contains("\"type\":\"last-prompt\"")
                 || trimmed.contains("\"type\": \"last-prompt\""))
             && let Ok(e) = serde_json::from_str::<TranscriptEntry>(trimmed)
-                && let TranscriptEntry::LastPrompt(lp) = e {
-                    last_prompt = Some(lp.last_prompt);
-                }
+            && let TranscriptEntry::LastPrompt(lp) = e
+        {
+            last_prompt = Some(lp.last_prompt);
+        }
 
         if title.is_none()
             && (trimmed.contains("\"type\":\"custom-title\"")
                 || trimmed.contains("\"type\": \"custom-title\""))
             && let Ok(e) = serde_json::from_str::<TranscriptEntry>(trimmed)
-                && let TranscriptEntry::CustomTitle(ct) = e {
-                    title = Some(ct.custom_title);
-                }
+            && let TranscriptEntry::CustomTitle(ct) = e
+        {
+            title = Some(ct.custom_title);
+        }
 
         if last_prompt.is_some() && title.is_some() {
             break;

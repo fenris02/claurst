@@ -120,7 +120,7 @@ pub fn scan_memory_dir(dir: &Path) -> Vec<MemoryFileMeta> {
     collect_md_files(dir, dir, &mut files);
 
     // Sort newest-first.
-    files.sort_by(|a, b| b.modified_secs.cmp(&a.modified_secs));
+    files.sort_by_key(|b| std::cmp::Reverse(b.modified_secs));
     files.truncate(MAX_MEMORY_FILES);
     files
 }
@@ -144,10 +144,9 @@ fn collect_md_files(base: &Path, current_dir: &Path, out: &mut Vec<MemoryFileMet
                 continue;
             }
 
-            let modified_secs = entry
-                .metadata()
-                .and_then(|m| m.modified())
-                .map_or(0, |t| t.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs());
+            let modified_secs = entry.metadata().and_then(|m| m.modified()).map_or(0, |t| {
+                t.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
+            });
 
             let (name, description, memory_type) =
                 if let Ok(content) = std::fs::read_to_string(&path) {
@@ -158,7 +157,8 @@ fn collect_md_files(base: &Path, current_dir: &Path, out: &mut Vec<MemoryFileMet
 
             // Relative path from the memory dir root.
             let relative = path
-                .strip_prefix(base).map_or_else(|_| file_name.clone(), |p| p.to_string_lossy().into_owned());
+                .strip_prefix(base)
+                .map_or_else(|_| file_name.clone(), |p| p.to_string_lossy().into_owned());
 
             out.push(MemoryFileMeta {
                 filename: relative,
@@ -350,16 +350,20 @@ pub const MAX_ENTRYPOINT_BYTES: usize = 25_000;
 pub fn auto_memory_path(project_root: &Path) -> PathBuf {
     // 1. Cowork full-path override.
     if let Ok(override_path) = std::env::var("CLAUDE_COWORK_MEMORY_PATH_OVERRIDE")
-        && !override_path.is_empty() {
-            return PathBuf::from(override_path);
-        }
+        && !override_path.is_empty()
+    {
+        return PathBuf::from(override_path);
+    }
 
     // 2. Determine the memory base directory.
-    let memory_base = std::env::var("CLAURST_REMOTE_MEMORY_DIR").map_or_else(|_| {
+    let memory_base = std::env::var("CLAURST_REMOTE_MEMORY_DIR").map_or_else(
+        |_| {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
                 .join(".claurst")
-        }, PathBuf::from);
+        },
+        PathBuf::from,
+    );
 
     // 3. Sanitize the project root into a safe directory name.
     let sanitized = sanitize_path_component(&project_root.to_string_lossy());

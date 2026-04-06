@@ -20,6 +20,7 @@ use std::collections::HashMap;
 ///
 /// `None` as the stored content means the file did not exist before the tool
 /// call (so reverting deletes it).
+#[derive(Debug)]
 pub struct SnapshotManager {
     /// `tool_use_id` -> Vec<(`absolute_file_path`, `content_before_write`)>
     ///
@@ -73,9 +74,8 @@ impl SnapshotManager {
         let mut reverted = Vec::new();
         let mut errors = Vec::new();
 
-        let entries = match self.snapshots.get(tool_use_id) {
-            Some(e) => e,
-            None => return (reverted, errors),
+        let Some(entries) = self.snapshots.get(tool_use_id) else {
+            return (reverted, errors);
         };
 
         // Revert in reverse order.

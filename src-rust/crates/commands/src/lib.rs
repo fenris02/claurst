@@ -7115,7 +7115,10 @@ impl SlashCommand for ShareCommand {
         let messages_json = match serde_json::to_value(&ctx.messages) {
             Ok(v) => v,
             Err(e) => {
-                return CommandResult::Error(format!("Failed to serialize session messages: {}", e));
+                return CommandResult::Error(format!(
+                    "Failed to serialize session messages: {}",
+                    e
+                ));
             }
         };
 

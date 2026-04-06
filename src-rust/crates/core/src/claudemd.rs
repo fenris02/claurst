@@ -56,7 +56,7 @@ pub struct MemoryFileInfo {
 // ---------------------------------------------------------------------------
 
 /// Simple mtime-keyed file cache.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct MemoryCache {
     entries: HashMap<PathBuf, (SystemTime, String)>,
 }
@@ -148,9 +148,7 @@ pub fn expand_includes(
 
             let canonical = include_path.canonicalize().unwrap_or(include_path.clone());
             if visited.contains(&canonical) {
-                result.push_str(&format!(
-                    "<!-- circular @include {path_str} skipped -->\n"
-                ));
+                result.push_str(&format!("<!-- circular @include {path_str} skipped -->\n"));
                 continue;
             }
             if let Ok(included) = std::fs::read_to_string(&include_path) {
@@ -250,24 +248,27 @@ pub fn load_all_memory_files(project_root: &Path) -> Vec<MemoryFileInfo> {
         // 2. User: ~/.claurst/AGENTS.md
         let user_claude = home.join(".claurst/AGENTS.md");
         if user_claude.exists()
-            && let Some(f) = load_memory_file(&user_claude, MemoryScope::User) {
-                files.push(f);
-            }
+            && let Some(f) = load_memory_file(&user_claude, MemoryScope::User)
+        {
+            files.push(f);
+        }
     }
 
     // 3. Project: {project_root}/AGENTS.md
     let project_claude = project_root.join("AGENTS.md");
     if project_claude.exists()
-        && let Some(f) = load_memory_file(&project_claude, MemoryScope::Project) {
-            files.push(f);
-        }
+        && let Some(f) = load_memory_file(&project_claude, MemoryScope::Project)
+    {
+        files.push(f);
+    }
 
     // 4. Local: {project_root}/.claurst/AGENTS.md
     let local_claude = project_root.join(".claurst/AGENTS.md");
     if local_claude.exists()
-        && let Some(f) = load_memory_file(&local_claude, MemoryScope::Local) {
-            files.push(f);
-        }
+        && let Some(f) = load_memory_file(&local_claude, MemoryScope::Local)
+    {
+        files.push(f);
+    }
 
     files
 }

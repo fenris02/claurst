@@ -111,8 +111,7 @@ pub fn decode_jwt_expiry(token: &str) -> Option<i64> {
 /// Returns `true` if the token is expired (or unparseable).
 #[must_use]
 pub fn jwt_is_expired(token: &str) -> bool {
-    JwtClaims::decode(token)
-        .map_or(true, |c| c.is_expired())
+    JwtClaims::decode(token).map_or(true, |c| c.is_expired())
 }
 
 // ---------------------------------------------------------------------------
@@ -206,17 +205,19 @@ impl BridgeConfig {
         // URL override (sets enabled implicitly)
         if let Ok(url) =
             std::env::var("CLAURST_BRIDGE_URL").or_else(|_| std::env::var("CLAUDE_BRIDGE_BASE_URL"))
-            && !url.is_empty() {
-                config.server_url = url;
-                config.enabled = true;
-            }
+            && !url.is_empty()
+        {
+            config.server_url = url;
+            config.enabled = true;
+        }
 
         // Token override
         if let Ok(token) = std::env::var("CLAURST_BRIDGE_TOKEN")
             .or_else(|_| std::env::var("CLAUDE_BRIDGE_OAUTH_TOKEN"))
-            && !token.is_empty() {
-                config.session_token = Some(token);
-            }
+            && !token.is_empty()
+        {
+            config.session_token = Some(token);
+        }
 
         config
     }
@@ -392,6 +393,7 @@ pub enum BridgeState {
 
 /// Active bridge session: owns the HTTP client, session credentials, and
 /// state. Runs the poll loop in a background tokio task.
+#[derive(Debug)]
 pub struct BridgeSession {
     config: BridgeConfig,
     session_id: String,
@@ -670,9 +672,10 @@ impl BridgeSession {
                 events.push(ev);
             }
             if !events.is_empty()
-                && let Err(e) = self.upload_events(events).await {
-                    warn!(session_id = %self.session_id, error = %e, "Event upload error");
-                }
+                && let Err(e) = self.upload_events(events).await
+            {
+                warn!(session_id = %self.session_id, error = %e, "Event upload error");
+            }
 
             // --- Poll for incoming messages ---
             match self.poll_messages().await {
@@ -757,6 +760,7 @@ impl BridgeSession {
 /// High-level manager wrapping configuration and a shared HTTP client.
 ///
 /// Prefer [`start_bridge`] for the simple one-shot API.
+#[derive(Debug)]
 pub struct BridgeManager {
     config: BridgeConfig,
     http: reqwest::Client,
@@ -944,7 +948,10 @@ pub async fn start_bridge_session(
     let session_id = uuid::Uuid::new_v4().to_string();
 
     let hostname = {
-        hostname::get().map_or_else(|_| "unknown".to_string(), |h| h.to_string_lossy().into_owned())
+        hostname::get().map_or_else(
+            |_| "unknown".to_string(),
+            |h| h.to_string_lossy().into_owned(),
+        )
     };
 
     let http = reqwest::Client::builder()
@@ -1164,9 +1171,7 @@ pub async fn post_bridge_response(
         debug!(session_id = %info.session_id, msg_id = %msg_id, "Bridge response posted");
         Ok(())
     } else {
-        anyhow::bail!(
-            "post_bridge_response: server returned HTTP {status} for msg {msg_id}"
-        )
+        anyhow::bail!("post_bridge_response: server returned HTTP {status} for msg {msg_id}")
     }
 }
 

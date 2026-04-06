@@ -399,7 +399,9 @@ pub fn add_to_history(entry: HistoryEntry) {
 
     // Push to pending buffer and record as last-added.
     let to_flush = {
-        let mut state = STATE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut state = STATE
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         state.pending.push(log_entry.clone());
         state.last_added = Some(log_entry);
         // Drain the pending buffer to hand off to the flush task.
@@ -418,13 +420,19 @@ pub async fn get_history(project: &str, current_session_id: Option<&str>) -> Vec
     let path = history_path();
 
     let (pending, skipped) = {
-        let state = STATE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let state = STATE
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         (state.pending.clone(), state.skipped_timestamps.clone())
     };
 
     // Read lines from disk newest-first (reverse the file).
     let disk_lines: Vec<String> = match fs::read_to_string(&path).await {
-        Ok(content) => content.lines().rev().map(std::string::ToString::to_string).collect(),
+        Ok(content) => content
+            .lines()
+            .rev()
+            .map(std::string::ToString::to_string)
+            .collect(),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
         Err(e) => {
             debug!("Failed to read history file: {}", e);
@@ -445,10 +453,10 @@ pub async fn get_history(project: &str, current_session_id: Option<&str>) -> Vec
                 // Apply skip-set.
                 if let Some(sid) = current_session_id
                     && entry.session_id.as_deref() == Some(sid)
-                        && skipped.contains(&entry.timestamp)
-                    {
-                        continue;
-                    }
+                    && skipped.contains(&entry.timestamp)
+                {
+                    continue;
+                }
                 all_entries.push(entry);
             }
             Err(e) => {
@@ -648,7 +656,9 @@ fn parse_references_with_positions(input: &str) -> Vec<(u32, String, usize)> {
 ///
 /// Fast path: remove from pending buffer.  Slow path: add timestamp to skip-set.
 pub fn remove_last_from_history() {
-    let mut state = STATE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut state = STATE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let Some(entry) = state.last_added.take() else {
         return;
     };
@@ -666,7 +676,9 @@ pub fn remove_last_from_history() {
 
 /// Wipe all pending entries and state (used in tests).
 pub fn clear_pending_history_entries() {
-    let mut state = STATE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut state = STATE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     state.pending.clear();
     state.last_added = None;
     state.skipped_timestamps.clear();

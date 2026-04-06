@@ -113,6 +113,7 @@ pub fn validate_memory_path(path: &str) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 /// Drives pull and push against the claude.ai team-memory API.
+#[derive(Debug)]
 pub struct TeamMemorySync {
     /// Base URL of the API, e.g. `"https://claude.ai"`.
     api_base: String,
@@ -224,7 +225,11 @@ impl TeamMemorySync {
         let changed: Vec<TeamMemoryEntry> = local_entries
             .into_iter()
             .filter(|entry| {
-                state.server_checksums.get(&entry.key).map(std::string::String::as_str) != Some(&entry.checksum)
+                state
+                    .server_checksums
+                    .get(&entry.key)
+                    .map(std::string::String::as_str)
+                    != Some(&entry.checksum)
             })
             .collect();
 
@@ -441,11 +446,12 @@ pub fn scan_for_secrets(content: &str) -> Vec<SecretMatch> {
     for (pattern, label) in PATTERNS {
         // Lazily compile; the fn is not hot enough to warrant a static cache here
         if let Ok(re) = regex::Regex::new(pattern)
-            && re.is_match(content) {
-                findings.push(SecretMatch {
-                    label: label.to_string(),
-                });
-            }
+            && re.is_match(content)
+        {
+            findings.push(SecretMatch {
+                label: label.to_string(),
+            });
+        }
     }
 
     findings

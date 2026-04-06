@@ -39,7 +39,7 @@ struct CachedFlags {
 }
 
 /// Manages feature flags from `GrowthBook`
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FeatureFlagManager {
     /// Map of flag key to flag value
     flags: Arc<parking_lot::RwLock<HashMap<String, bool>>>,
@@ -98,11 +98,12 @@ impl FeatureFlagManager {
     pub async fn fetch_flags_async(&self) -> Result<()> {
         // Try to load from cache first
         if let Ok(cached) = self.load_cached_flags().await
-            && self.is_cache_valid(&cached) {
-                debug!("Using cached feature flags");
-                self.update_flags_from_cached(&cached);
-                return Ok(());
-            }
+            && self.is_cache_valid(&cached)
+        {
+            debug!("Using cached feature flags");
+            self.update_flags_from_cached(&cached);
+            return Ok(());
+        }
 
         // Cache is stale or missing, fetch from API
         debug!("Fetching feature flags from GrowthBook API");

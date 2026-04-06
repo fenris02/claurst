@@ -14,6 +14,7 @@ use tracing::debug;
 ///
 /// Templates use `{{variable_name}}` or `{{nested.path}}` syntax.
 /// Missing variables are left as-is (not replaced).
+#[derive(Debug)]
 pub struct TemplateRenderer;
 
 impl TemplateRenderer {

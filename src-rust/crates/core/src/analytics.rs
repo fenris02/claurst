@@ -166,6 +166,7 @@ pub enum AnalyticsEvent {
 
 /// Analytics sink — currently logs via `tracing`; can be extended to push
 /// events to a first-party endpoint.
+#[derive(Debug)]
 pub struct Analytics {
     enabled: bool,
     session_id: String,
@@ -196,12 +197,14 @@ impl Analytics {
 /// product telemetry. All call sites compile unchanged; all data is discarded.
 pub fn log_event(_event_name: &str, _metadata: &[(&str, &str)]) {}
 
+#[allow(clippy::unused_async)]
 pub async fn log_event_async(_event_name: &str, _metadata: &[(&str, &str)]) {}
 
 /// No-op. The Rust port does not initialize `OpenTelemetry` exporters.
 pub fn initialize_telemetry() {}
 
 /// No-op. Nothing to flush.
+#[allow(clippy::unused_async)]
 pub async fn flush_telemetry() {}
 
 /// Always returns false. Enhanced telemetry is disabled.

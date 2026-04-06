@@ -87,10 +87,9 @@ impl AuthStore {
         // Check stored credentials first
         if let Some(stored) = self.get(provider_id) {
             match stored {
-                StoredCredential::ApiKey { key }
-                    if !key.is_empty() => {
-                        return Some(key.clone());
-                    }
+                StoredCredential::ApiKey { key } if !key.is_empty() => {
+                    return Some(key.clone());
+                }
                 StoredCredential::OAuthToken {
                     access, refresh, ..
                 } if provider_id == "github-copilot" => {

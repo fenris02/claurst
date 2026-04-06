@@ -349,6 +349,7 @@ impl UserKeybindings {
 }
 
 /// Resolved keybindings (defaults merged with user overrides)
+#[derive(Debug)]
 pub struct KeybindingResolver {
     bindings: Vec<ParsedBinding>,
     pending_chord: Vec<ParsedKeystroke>,

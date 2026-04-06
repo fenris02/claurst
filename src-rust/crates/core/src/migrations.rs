@@ -160,10 +160,11 @@ fn rename_model(settings: &mut Value, from: &str, to: &str) -> bool {
     let mut changed = false;
     for key in &["model", "defaultModel", "mainLoopModel"] {
         if let Some(val) = settings.get_mut(*key)
-            && val.as_str() == Some(from) {
-                *val = Value::String(to.to_string());
-                changed = true;
-            }
+            && val.as_str() == Some(from)
+        {
+            *val = Value::String(to.to_string());
+            changed = true;
+        }
     }
     changed
 }
@@ -174,9 +175,8 @@ fn rename_model(settings: &mut Value, from: &str, to: &str) -> bool {
 
 /// Move `bypassPermissionsAccepted` boolean into `permissionMode`.
 fn migrate_bypass_permissions_to_settings(settings: &mut Value) -> bool {
-    let old = match settings.get("bypassPermissionsAccepted").cloned() {
-        Some(v) => v,
-        None => return false,
+    let Some(old) = settings.get("bypassPermissionsAccepted").cloned() else {
+        return false;
     };
 
     if settings.get("permissionMode").is_none() && old.as_bool().unwrap_or(false) {
@@ -191,9 +191,8 @@ fn migrate_bypass_permissions_to_settings(settings: &mut Value) -> bool {
 
 /// Rename `replBridgeEnabled` → `remoteControlAtStartup`.
 fn migrate_repl_bridge_to_remote_control(settings: &mut Value) -> bool {
-    let old = match settings.get("replBridgeEnabled").cloned() {
-        Some(v) => v,
-        None => return false,
+    let Some(old) = settings.get("replBridgeEnabled").cloned() else {
+        return false;
     };
 
     if settings.get("remoteControlAtStartup").is_none() {
@@ -208,9 +207,8 @@ fn migrate_repl_bridge_to_remote_control(settings: &mut Value) -> bool {
 
 /// Rename `enableAllProjectMcpServers` → `mcpAutoApprove`.
 fn migrate_enable_all_mcp_servers(settings: &mut Value) -> bool {
-    let old = match settings.get("enableAllProjectMcpServers").cloned() {
-        Some(v) => v,
-        None => return false,
+    let Some(old) = settings.get("enableAllProjectMcpServers").cloned() else {
+        return false;
     };
 
     if settings.get("mcpAutoApprove").is_none() {
@@ -228,9 +226,8 @@ fn migrate_enable_all_mcp_servers(settings: &mut Value) -> bool {
 /// The TS version also writes an env-var to settings.json; here we keep the
 /// simpler structural rename and leave env-var injection to the caller.
 fn migrate_auto_updates(settings: &mut Value) -> bool {
-    let old = match settings.get("autoUpdatesEnabled").cloned() {
-        Some(v) => v,
-        None => return false,
+    let Some(old) = settings.get("autoUpdatesEnabled").cloned() else {
+        return false;
     };
 
     if settings.get("autoUpdates").is_none() {
@@ -246,10 +243,11 @@ fn migrate_auto_updates(settings: &mut Value) -> bool {
 /// Clear an old sentinel value for the auto-mode opt-in flag.
 fn reset_auto_mode_opt_in(settings: &mut Value) -> bool {
     if let Some(val) = settings.get("autoModeOptIn")
-        && val.as_str() == Some("default_offer_2024") {
-            settings["autoModeOptIn"] = Value::Null;
-            return true;
-        }
+        && val.as_str() == Some("default_offer_2024")
+    {
+        settings["autoModeOptIn"] = Value::Null;
+        return true;
+    }
     false
 }
 
@@ -257,16 +255,17 @@ fn reset_auto_mode_opt_in(settings: &mut Value) -> bool {
 /// Only resets when `modelSetByUser` is not explicitly `true`.
 fn reset_pro_to_opus_default(settings: &mut Value) -> bool {
     if let Some(val) = settings.get("model")
-        && val.as_str() == Some("claude-opus-4-5-20251001") {
-            let set_by_user = settings
-                .get("modelSetByUser")
-                .and_then(serde_json::Value::as_bool)
-                .unwrap_or(false);
-            if !set_by_user {
-                settings["model"] = Value::String("claude-sonnet-4-6".to_string());
-                return true;
-            }
+        && val.as_str() == Some("claude-opus-4-5-20251001")
+    {
+        let set_by_user = settings
+            .get("modelSetByUser")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+        if !set_by_user {
+            settings["model"] = Value::String("claude-sonnet-4-6".to_string());
+            return true;
         }
+    }
     false
 }
 

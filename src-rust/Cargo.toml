@@ -92,10 +92,11 @@ similar_names           = "allow"
 # Local lint changes
 blanket_clippy_restriction_lints = "allow"
 cast_possible_truncation         = "allow"
+cast_precision_loss              = "allow"
 fn_to_numeric_cast_any           = "warn"
-missing_errors_doc               = "warn"
-missing_panics_doc               = "warn"
-missing_safety_doc               = "warn"
+missing_errors_doc               = "allow"
+missing_panics_doc               = "allow"
+missing_safety_doc               = "allow"
 
 [workspace.dependencies]
 # Async runtime

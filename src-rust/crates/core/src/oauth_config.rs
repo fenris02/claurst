@@ -349,8 +349,7 @@ pub fn clear_codex_tokens() -> anyhow::Result<()> {
 /// or by setting `CLAURST_USE_OPENAI=1` with a manually stored token.
 #[must_use]
 pub fn is_codex_subscriber() -> bool {
-    get_codex_tokens()
-        .is_some_and(|t| !t.access_token.is_empty())
+    get_codex_tokens().is_some_and(|t| !t.access_token.is_empty())
 }
 
 // ---------------------------------------------------------------------------

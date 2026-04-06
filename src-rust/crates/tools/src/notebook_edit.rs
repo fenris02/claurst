@@ -161,7 +161,9 @@ impl Tool for NotebookEditTool {
                 let cell_id = match &params.cell_id {
                     Some(id) => id.clone(),
                     None => {
-                        return ToolResult::error("cell_id is required for delete mode".to_string());
+                        return ToolResult::error(
+                            "cell_id is required for delete mode".to_string(),
+                        );
                     }
                 };
                 delete_cell(&mut notebook, &cell_id)

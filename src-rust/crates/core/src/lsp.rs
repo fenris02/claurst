@@ -169,6 +169,7 @@ async fn read_message(reader: &mut BufReader<ChildStdout>) -> anyhow::Result<ser
 type PendingMap = Arc<DashMap<u64, oneshot::Sender<serde_json::Value>>>;
 
 /// A running LSP client connected to a single server process.
+#[derive(Debug)]
 pub struct LspClient {
     pub server_name: String,
     pub server_config: LspServerConfig,
@@ -187,6 +188,7 @@ pub struct LspClient {
 impl LspClient {
     /// Spawn the server process and return a connected client.  The I/O pump
     /// task is started in the background.
+    #[allow(clippy::unused_async)]
     pub async fn start(config: LspServerConfig) -> anyhow::Result<Self> {
         let mut cmd = Command::new(&config.command);
         cmd.args(&config.args)
@@ -631,7 +633,7 @@ fn handle_publish_diagnostics(
         None => return,
     };
 
-    let raw_diags = if let Some(d) = params.get("diagnostics").and_then(|v| v.as_array()) { d } else {
+    let Some(raw_diags) = params.get("diagnostics").and_then(|v| v.as_array()) else {
         diagnostics.insert(uri, Vec::new());
         return;
     };
@@ -732,7 +734,10 @@ fn collect_symbol(sym: &serde_json::Value, depth: usize, out: &mut Vec<String>) 
         .get("name")
         .and_then(|n| n.as_str())
         .unwrap_or("<unnamed>");
-    let kind = sym.get("kind").and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let kind = sym
+        .get("kind")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
     let kind_str = symbol_kind_name(kind);
     out.push(format!("{indent}{name} ({kind_str})"));
 
@@ -850,6 +855,7 @@ impl LspManager {
 
 /// Manages a collection of [`LspClient`] instances, routing file operations
 /// to the correct server based on extension mappings.
+#[derive(Debug)]
 pub struct LspManager {
     /// Registered configs (used for lookup before a client is started)
     configs: Vec<LspServerConfig>,
@@ -996,16 +1002,16 @@ impl LspManager {
         };
 
         // Skip if already opened on this server
-        if self.opened_files.get(&uri).map(std::string::String::as_str) == Some(server_name.as_str()) {
+        if self.opened_files.get(&uri).map(std::string::String::as_str)
+            == Some(server_name.as_str())
+        {
             return Ok(());
         }
 
         let content = match tokio::fs::read_to_string(file_path).await {
             Ok(c) => c,
             Err(e) => {
-                return Err(anyhow::anyhow!(
-                    "Cannot read '{file_path}' for LSP: {e}"
-                ));
+                return Err(anyhow::anyhow!("Cannot read '{file_path}' for LSP: {e}"));
             }
         };
 
@@ -1122,14 +1128,16 @@ impl LspManager {
         let names: Vec<String> = self.clients.keys().cloned().collect();
         for name in names {
             if let Some(mut client) = self.clients.remove(&name)
-                && let Err(e) = client.shutdown().await {
-                    tracing::warn!("Error shutting down LSP server '{}': {}", name, e);
-                }
+                && let Err(e) = client.shutdown().await
+            {
+                tracing::warn!("Error shutting down LSP server '{}': {}", name, e);
+            }
         }
         self.opened_files.clear();
     }
 
     /// Get a legacy-compatible async diagnostic query (returns cached results).
+    #[allow(clippy::unused_async)]
     pub async fn get_diagnostics(&self, file: &str) -> Vec<LspDiagnostic> {
         self.get_diagnostics_for_file(file)
     }
@@ -1144,7 +1152,6 @@ impl Default for LspManager {
 // ---------------------------------------------------------------------------
 // Global singleton
 // ---------------------------------------------------------------------------
-
 
 static GLOBAL_LSP_MANAGER: std::sync::LazyLock<Arc<tokio::sync::Mutex<LspManager>>> =
     std::sync::LazyLock::new(|| Arc::new(tokio::sync::Mutex::new(LspManager::new())));

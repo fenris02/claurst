@@ -117,9 +117,8 @@ pub fn load_output_styles_dir(styles_dir: &Path) -> Vec<OutputStyleDef> {
         return Vec::new();
     }
 
-    let entries = match std::fs::read_dir(styles_dir) {
-        Ok(e) => e,
-        Err(_) => return Vec::new(),
+    let Ok(entries) = std::fs::read_dir(styles_dir) else {
+        return Vec::new();
     };
 
     let mut styles = Vec::new();
@@ -127,9 +126,10 @@ pub fn load_output_styles_dir(styles_dir: &Path) -> Vec<OutputStyleDef> {
         let path = entry.path();
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         if (ext == "md" || ext == "json")
-            && let Some(style) = load_style_file(&path) {
-                styles.push(style);
-            }
+            && let Some(style) = load_style_file(&path)
+        {
+            styles.push(style);
+        }
     }
 
     // Sort alphabetically so the list is deterministic.
@@ -207,7 +207,8 @@ pub fn find_style<'a>(styles: &'a [OutputStyleDef], name: &str) -> Option<&'a Ou
 // Runtime style registry (populated by plugins at startup)
 // ---------------------------------------------------------------------------
 
-static RUNTIME_STYLES: std::sync::LazyLock<Mutex<Vec<OutputStyleDef>>> = std::sync::LazyLock::new(|| Mutex::new(Vec::new()));
+static RUNTIME_STYLES: std::sync::LazyLock<Mutex<Vec<OutputStyleDef>>> =
+    std::sync::LazyLock::new(|| Mutex::new(Vec::new()));
 
 /// Register an `OutputStyleDef` at runtime (called from plugin loading code).
 ///
@@ -216,9 +217,10 @@ static RUNTIME_STYLES: std::sync::LazyLock<Mutex<Vec<OutputStyleDef>>> = std::sy
 /// hot-reloading a plugin does not double-register styles.
 pub fn register_runtime_style(style: OutputStyleDef) {
     if let Ok(mut list) = RUNTIME_STYLES.lock()
-        && !list.iter().any(|s| s.name == style.name) {
-            list.push(style);
-        }
+        && !list.iter().any(|s| s.name == style.name)
+    {
+        list.push(style);
+    }
 }
 
 /// Return all runtime-registered styles.
@@ -248,9 +250,10 @@ pub fn find_style_runtime<'a>(
     }
     // Fall back to runtime registry.
     if let Ok(rt) = RUNTIME_STYLES.lock()
-        && let Some(s) = rt.iter().find(|s| s.name == name) {
-            return Some(std::borrow::Cow::Owned(s.clone()));
-        }
+        && let Some(s) = rt.iter().find(|s| s.name == name)
+    {
+        return Some(std::borrow::Cow::Owned(s.clone()));
+    }
     None
 }
 

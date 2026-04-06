@@ -245,9 +245,10 @@ pub struct SystemPromptOptions {
 pub fn build_system_prompt(opts: &SystemPromptOptions) -> String {
     // Replace mode: skip all default sections.
     if opts.replace_system_prompt
-        && let Some(custom) = &opts.custom_system_prompt {
-            return format!("{custom}\n\n{SYSTEM_PROMPT_DYNAMIC_BOUNDARY}");
-        }
+        && let Some(custom) = &opts.custom_system_prompt
+    {
+        return format!("{custom}\n\n{SYSTEM_PROMPT_DYNAMIC_BOUNDARY}");
+    }
 
     let prefix = opts.prefix.unwrap_or_else(|| {
         SystemPromptPrefix::detect(opts.is_non_interactive, opts.has_append_system_prompt)
@@ -367,7 +368,8 @@ fn build_env_info_section(working_dir: Option<&str>) -> String {
                 .args(["-s", "-r"])
                 .output()
                 .ok()
-                .and_then(|o| String::from_utf8(o.stdout).ok()).map_or_else(|| platform.to_string(), |s| s.trim().to_string())
+                .and_then(|o| String::from_utf8(o.stdout).ok())
+                .map_or_else(|| platform.to_string(), |s| s.trim().to_string())
         }
     };
 
@@ -397,8 +399,7 @@ fn build_env_info_section(working_dir: Option<&str>) -> String {
     };
 
     // Is git repo?
-    let is_git = working_dir
-        .is_some_and(|d| std::path::Path::new(d).join(".git").exists());
+    let is_git = working_dir.is_some_and(|d| std::path::Path::new(d).join(".git").exists());
 
     // Today's date
     let today = {
@@ -435,9 +436,7 @@ fn build_env_info_section(working_dir: Option<&str>) -> String {
              BSD variants of tools apply (e.g., `sed -i ''` not `sed -i`)."
         )
     } else {
-        format!(
-            "\nThe user is on Linux ({os_version}). Use Linux-compatible commands."
-        )
+        format!("\nThe user is on Linux ({os_version}). Use Linux-compatible commands.")
     };
 
     format!(

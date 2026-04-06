@@ -129,10 +129,9 @@ pub fn classify_bash_command(command: &str) -> BashRiskLevel {
     }
 
     // dd with an if= (disk image writing) — extremely destructive
-    if (cmd.starts_with("dd ") || cmd == "dd")
-        && cmd.contains("if=") {
-            return BashRiskLevel::Critical;
-        }
+    if (cmd.starts_with("dd ") || cmd == "dd") && cmd.contains("if=") {
+        return BashRiskLevel::Critical;
+    }
 
     // mkfs — format filesystem
     if cmd.starts_with("mkfs") || cmd.starts_with("mkfs.") {
@@ -172,10 +171,10 @@ pub fn classify_bash_command(command: &str) -> BashRiskLevel {
     // chmod 777 on / or critical paths
     if let Some(args) = cmd.strip_prefix("chmod ")
         && (args.contains("777") || args.contains("a+rwx"))
-            && (args.contains(" /") || args.ends_with('/'))
-        {
-            return BashRiskLevel::Critical;
-        }
+        && (args.contains(" /") || args.ends_with('/'))
+    {
+        return BashRiskLevel::Critical;
+    }
 
     // ── Privilege escalation → High ────────────────────────────────────────
 

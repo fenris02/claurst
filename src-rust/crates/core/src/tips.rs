@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 // ---------------------------------------------------------------------------
 
 /// A single contextual tip shown to the user.
+#[derive(Debug)]
 pub struct Tip {
     pub id: &'static str,
     /// The tip text displayed to the user.
@@ -199,9 +200,8 @@ impl TipHistory {
     /// parsed.
     #[must_use]
     pub fn load() -> Self {
-        let path = match Self::history_path() {
-            Some(p) => p,
-            None => return Self::default(),
+        let Some(path) = Self::history_path() else {
+            return Self::default();
         };
         match std::fs::read_to_string(&path) {
             Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
@@ -212,9 +212,8 @@ impl TipHistory {
     /// Persist history to `~/.claurst/tip_history.json`.
     /// Silently ignores I/O errors (tips are non-critical).
     pub fn save(&self) {
-        let path = match Self::history_path() {
-            Some(p) => p,
-            None => return,
+        let Some(path) = Self::history_path() else {
+            return;
         };
         // Ensure the parent directory exists.
         if let Some(parent) = path.parent() {
@@ -308,7 +307,7 @@ pub fn select_tip(session_num: u64) -> Option<&'static Tip> {
     }
 
     // Sort by least recently shown (highest `sessions_since` first).
-    candidates.sort_by(|a, b| b.1.cmp(&a.1));
+    candidates.sort_by_key(|b| std::cmp::Reverse(b.1));
     Some(candidates[0].0)
 }
 

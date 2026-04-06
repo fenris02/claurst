@@ -84,6 +84,7 @@ pub fn collapse_context(
 }
 
 #[cfg(not(feature = "cached_microcompact"))]
+#[must_use]
 pub fn collapse_context(
     messages: Vec<Message>, _max_tokens: u64, _strategy: CollapseStrategy,
 ) -> (Vec<Message>, Option<CollapseState>) {

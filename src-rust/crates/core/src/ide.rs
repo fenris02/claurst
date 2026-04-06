@@ -54,25 +54,26 @@ impl IdeKind {
 pub fn detect_ide() -> Option<IdeKind> {
     // TERM_PROGRAM is set by VS Code's integrated terminal (and forks).
     if let Ok(term_program) = std::env::var("TERM_PROGRAM")
-        && term_program.as_str() == "vscode" {
-            // Distinguish VS Code forks by checking GIT_ASKPASS for IDE-specific paths.
-            if let Ok(askpass) = std::env::var("GIT_ASKPASS") {
-                let lower = askpass.to_lowercase();
-                if lower.contains("cursor") {
-                    return Some(IdeKind::Cursor);
-                }
-                if lower.contains("windsurf") {
-                    return Some(IdeKind::Windsurf);
-                }
-                if lower.contains("codium") {
-                    return Some(IdeKind::VSCodium);
-                }
-                if lower.contains("code-insiders") {
-                    return Some(IdeKind::VSCodeInsiders);
-                }
+        && term_program.as_str() == "vscode"
+    {
+        // Distinguish VS Code forks by checking GIT_ASKPASS for IDE-specific paths.
+        if let Ok(askpass) = std::env::var("GIT_ASKPASS") {
+            let lower = askpass.to_lowercase();
+            if lower.contains("cursor") {
+                return Some(IdeKind::Cursor);
             }
-            return Some(IdeKind::VSCode);
+            if lower.contains("windsurf") {
+                return Some(IdeKind::Windsurf);
+            }
+            if lower.contains("codium") {
+                return Some(IdeKind::VSCodium);
+            }
+            if lower.contains("code-insiders") {
+                return Some(IdeKind::VSCodeInsiders);
+            }
         }
+        return Some(IdeKind::VSCode);
+    }
 
     // GIT_ASKPASS alone (without TERM_PROGRAM) can also identify the IDE.
     if let Ok(askpass) = std::env::var("GIT_ASKPASS") {

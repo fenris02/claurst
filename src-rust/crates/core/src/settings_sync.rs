@@ -25,7 +25,6 @@ use tracing::{debug, warn};
 // ---------------------------------------------------------------------------
 
 const SYNC_TIMEOUT_SECS: u64 = 10;
-#[expect(dead_code)]
 const DEFAULT_MAX_RETRIES: u32 = 3;
 /// 500 KB per-file size limit (matches backend enforcement).
 const MAX_FILE_SIZE_BYTES: u64 = 500 * 1024;
@@ -104,6 +103,7 @@ pub struct SyncedData {
 // ---------------------------------------------------------------------------
 
 /// Manages uploading and downloading settings/memory files to/from claude.ai.
+#[derive(Debug)]
 pub struct SettingsSyncManager {
     /// OAuth bearer token for authentication.
     pub oauth_token: String,
@@ -442,7 +442,6 @@ fn claude_config_dir() -> PathBuf {
 }
 
 /// Exponential backoff delay for retry attempt `n` (1-indexed), capped at 30 s.
-#[expect(dead_code)]
 fn retry_delay(attempt: u32) -> Duration {
     let shift = attempt.saturating_sub(1).min(30);
     let secs: u64 = 1u64.checked_shl(shift).unwrap_or(u64::MAX).min(30);
