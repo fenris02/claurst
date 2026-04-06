@@ -63,6 +63,7 @@ pub struct MemoryCache {
 
 impl MemoryCache {
     /// Return cached content if the file hasn't changed since last read.
+    #[must_use]
     pub fn get(&self, path: &Path) -> Option<&str> {
         let mtime = std::fs::metadata(path).ok()?.modified().ok()?;
         let (cached_mtime, content) = self.entries.get(path)?;
@@ -86,7 +87,8 @@ impl MemoryCache {
 // ---------------------------------------------------------------------------
 
 /// Strip YAML frontmatter (--- ... ---) from content and parse it.
-/// Returns (frontmatter, body_without_frontmatter).
+/// Returns (frontmatter, `body_without_frontmatter`).
+#[must_use]
 pub fn parse_frontmatter(content: &str) -> (MemoryFrontmatter, &str) {
     if !content.starts_with("---") {
         return (MemoryFrontmatter::default(), content);
@@ -147,8 +149,7 @@ pub fn expand_includes(
             let canonical = include_path.canonicalize().unwrap_or(include_path.clone());
             if visited.contains(&canonical) {
                 result.push_str(&format!(
-                    "<!-- circular @include {} skipped -->\n",
-                    path_str
+                    "<!-- circular @include {path_str} skipped -->\n"
                 ));
                 continue;
             }
@@ -156,8 +157,7 @@ pub fn expand_includes(
                 // Check max size.
                 if included.len() > 40 * 1024 {
                     result.push_str(&format!(
-                        "<!-- @include {} exceeds 40KB limit -->\n",
-                        path_str
+                        "<!-- @include {path_str} exceeds 40KB limit -->\n"
                     ));
                     continue;
                 }
@@ -171,7 +171,7 @@ pub fn expand_includes(
                 result.push_str(&expanded);
                 result.push('\n');
             } else {
-                result.push_str(&format!("<!-- @include {} not found -->\n", path_str));
+                result.push_str(&format!("<!-- @include {path_str} not found -->\n"));
             }
         } else {
             result.push_str(line);
@@ -187,7 +187,8 @@ pub fn expand_includes(
 
 const MAX_FILE_SIZE: u64 = 40 * 1024; // 40 KB
 
-/// Load a single AGENTS.md file (respects MAX_FILE_SIZE, expands @includes).
+/// Load a single AGENTS.md file (respects `MAX_FILE_SIZE`, expands @includes).
+#[must_use]
 pub fn load_memory_file(path: &Path, scope: MemoryScope) -> Option<MemoryFileInfo> {
     let meta = std::fs::metadata(path).ok()?;
     if meta.len() > MAX_FILE_SIZE {
@@ -219,6 +220,7 @@ pub fn load_memory_file(path: &Path, scope: MemoryScope) -> Option<MemoryFileInf
 /// Load all AGENTS.md files for the given project root, in priority order.
 ///
 /// Returned list is ordered: Managed (highest) → User → Project → Local.
+#[must_use]
 pub fn load_all_memory_files(project_root: &Path) -> Vec<MemoryFileInfo> {
     let mut files = Vec::new();
 
@@ -230,7 +232,7 @@ pub fn load_all_memory_files(project_root: &Path) -> Vec<MemoryFileInfo> {
                 .flatten()
                 .filter_map(|e| {
                     let p = e.path();
-                    if p.extension().map_or(false, |x| x == "md") {
+                    if p.extension().is_some_and(|x| x == "md") {
                         Some(p)
                     } else {
                         None
@@ -247,33 +249,31 @@ pub fn load_all_memory_files(project_root: &Path) -> Vec<MemoryFileInfo> {
 
         // 2. User: ~/.claurst/AGENTS.md
         let user_claude = home.join(".claurst/AGENTS.md");
-        if user_claude.exists() {
-            if let Some(f) = load_memory_file(&user_claude, MemoryScope::User) {
+        if user_claude.exists()
+            && let Some(f) = load_memory_file(&user_claude, MemoryScope::User) {
                 files.push(f);
             }
-        }
     }
 
     // 3. Project: {project_root}/AGENTS.md
     let project_claude = project_root.join("AGENTS.md");
-    if project_claude.exists() {
-        if let Some(f) = load_memory_file(&project_claude, MemoryScope::Project) {
+    if project_claude.exists()
+        && let Some(f) = load_memory_file(&project_claude, MemoryScope::Project) {
             files.push(f);
         }
-    }
 
     // 4. Local: {project_root}/.claurst/AGENTS.md
     let local_claude = project_root.join(".claurst/AGENTS.md");
-    if local_claude.exists() {
-        if let Some(f) = load_memory_file(&local_claude, MemoryScope::Local) {
+    if local_claude.exists()
+        && let Some(f) = load_memory_file(&local_claude, MemoryScope::Local) {
             files.push(f);
         }
-    }
 
     files
 }
 
 /// Concatenate all memory file contents into a single system-prompt fragment.
+#[must_use]
 pub fn build_memory_prompt(files: &[MemoryFileInfo]) -> String {
     files
         .iter()

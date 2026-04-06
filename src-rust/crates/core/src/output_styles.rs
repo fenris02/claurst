@@ -13,7 +13,6 @@
 
 use std::{path::Path, sync::Mutex};
 
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
@@ -37,6 +36,7 @@ pub struct OutputStyleDef {
 impl OutputStyleDef {
     // ---- Built-in styles ---------------------------------------------------
 
+    #[must_use]
     pub fn builtin_default() -> Self {
         Self {
             name: "default".to_string(),
@@ -46,6 +46,7 @@ impl OutputStyleDef {
         }
     }
 
+    #[must_use]
     pub fn builtin_concise() -> Self {
         Self {
             name: "concise".to_string(),
@@ -57,6 +58,7 @@ impl OutputStyleDef {
         }
     }
 
+    #[must_use]
     pub fn builtin_explanatory() -> Self {
         Self {
             name: "explanatory".to_string(),
@@ -69,6 +71,7 @@ impl OutputStyleDef {
         }
     }
 
+    #[must_use]
     pub fn builtin_learning() -> Self {
         Self {
             name: "learning".to_string(),
@@ -87,6 +90,7 @@ impl OutputStyleDef {
 // ---------------------------------------------------------------------------
 
 /// Return all built-in output styles in display order.
+#[must_use]
 pub fn builtin_styles() -> Vec<OutputStyleDef> {
     vec![
         OutputStyleDef::builtin_default(),
@@ -107,6 +111,7 @@ pub fn builtin_styles() -> Vec<OutputStyleDef> {
 /// - `.json` — JSON: `{ "name": "…", "label": "…", "description": "…", "prompt": "…" }`
 ///
 /// Files that cannot be parsed are silently skipped.
+#[must_use]
 pub fn load_output_styles_dir(styles_dir: &Path) -> Vec<OutputStyleDef> {
     if !styles_dir.exists() {
         return Vec::new();
@@ -121,11 +126,10 @@ pub fn load_output_styles_dir(styles_dir: &Path) -> Vec<OutputStyleDef> {
     for entry in entries.flatten() {
         let path = entry.path();
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-        if ext == "md" || ext == "json" {
-            if let Some(style) = load_style_file(&path) {
+        if (ext == "md" || ext == "json")
+            && let Some(style) = load_style_file(&path) {
                 styles.push(style);
             }
-        }
     }
 
     // Sort alphabetically so the list is deterministic.
@@ -185,6 +189,7 @@ fn load_style_file(path: &Path) -> Option<OutputStyleDef> {
 /// built-ins first, then styles from `<config_dir>/output-styles/`.
 ///
 /// `config_dir` is typically `~/.claurst`.
+#[must_use]
 pub fn all_styles(config_dir: &Path) -> Vec<OutputStyleDef> {
     let mut styles = builtin_styles();
     let user_dir = config_dir.join("output-styles");
@@ -193,6 +198,7 @@ pub fn all_styles(config_dir: &Path) -> Vec<OutputStyleDef> {
 }
 
 /// Find a style by its `name` field.
+#[must_use]
 pub fn find_style<'a>(styles: &'a [OutputStyleDef], name: &str) -> Option<&'a OutputStyleDef> {
     styles.iter().find(|s| s.name == name)
 }
@@ -201,7 +207,7 @@ pub fn find_style<'a>(styles: &'a [OutputStyleDef], name: &str) -> Option<&'a Ou
 // Runtime style registry (populated by plugins at startup)
 // ---------------------------------------------------------------------------
 
-static RUNTIME_STYLES: Lazy<Mutex<Vec<OutputStyleDef>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static RUNTIME_STYLES: std::sync::LazyLock<Mutex<Vec<OutputStyleDef>>> = std::sync::LazyLock::new(|| Mutex::new(Vec::new()));
 
 /// Register an `OutputStyleDef` at runtime (called from plugin loading code).
 ///
@@ -209,11 +215,10 @@ static RUNTIME_STYLES: Lazy<Mutex<Vec<OutputStyleDef>>> = Lazy::new(|| Mutex::ne
 /// `find_style_runtime`.  Duplicate names are silently ignored so that
 /// hot-reloading a plugin does not double-register styles.
 pub fn register_runtime_style(style: OutputStyleDef) {
-    if let Ok(mut list) = RUNTIME_STYLES.lock() {
-        if !list.iter().any(|s| s.name == style.name) {
+    if let Ok(mut list) = RUNTIME_STYLES.lock()
+        && !list.iter().any(|s| s.name == style.name) {
             list.push(style);
         }
-    }
 }
 
 /// Return all runtime-registered styles.
@@ -222,6 +227,7 @@ pub fn runtime_styles() -> Vec<OutputStyleDef> {
 }
 
 /// Like `all_styles`, but also includes runtime-registered plugin styles.
+#[must_use]
 pub fn all_styles_with_runtime(config_dir: &Path) -> Vec<OutputStyleDef> {
     let mut styles = all_styles(config_dir);
     let rt = runtime_styles();
@@ -241,11 +247,10 @@ pub fn find_style_runtime<'a>(
         return Some(std::borrow::Cow::Borrowed(s));
     }
     // Fall back to runtime registry.
-    if let Ok(rt) = RUNTIME_STYLES.lock() {
-        if let Some(s) = rt.iter().find(|s| s.name == name) {
+    if let Ok(rt) = RUNTIME_STYLES.lock()
+        && let Some(s) = rt.iter().find(|s| s.name == name) {
             return Some(std::borrow::Cow::Owned(s.clone()));
         }
-    }
     None
 }
 

@@ -1,5 +1,5 @@
 //! Voice input: availability checks, hold-to-talk recording, and speech-to-text
-//! transcription via the OpenAI Whisper-compatible API.
+//! transcription via the `OpenAI` Whisper-compatible API.
 //!
 //! # Feature flag
 //! Audio capture via `cpal` is gated behind the `voice` feature.  When the
@@ -51,12 +51,14 @@ pub enum VoiceAvailability {
 
 impl VoiceAvailability {
     /// Returns `true` when voice mode can be started.
+    #[must_use]
     pub fn is_available(&self) -> bool {
         matches!(self, VoiceAvailability::Available)
     }
 
     /// Returns a human-readable error message when voice is not available,
     /// or `None` when it is.
+    #[must_use]
     pub fn error_message(&self) -> Option<String> {
         match self {
             VoiceAvailability::Available => None,
@@ -87,6 +89,7 @@ impl VoiceAvailability {
 /// Check whether voice mode is available given the current OAuth tokens.
 ///
 /// Pass `None` when the user is not authenticated via OAuth (API-key-only auth).
+#[must_use]
 pub fn check_voice_availability(tokens: Option<&OAuthTokens>) -> VoiceAvailability {
     // Check kill switch first — always wins
     if std::env::var(KILL_SWITCH_ENV).is_ok() {
@@ -105,14 +108,14 @@ pub fn check_voice_availability(tokens: Option<&OAuthTokens>) -> VoiceAvailabili
     let missing: Vec<String> = VOICE_REQUIRED_SCOPES
         .iter()
         .filter(|&&required| !have_scopes.iter().any(|h| h == required))
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .collect();
 
     if !missing.is_empty() {
         return VoiceAvailability::MissingScopes {
             required: VOICE_REQUIRED_SCOPES
                 .iter()
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .collect(),
             have: have_scopes.to_vec(),
         };
@@ -187,6 +190,7 @@ pub struct VoiceRecorder {
 
 impl VoiceRecorder {
     /// Create a new recorder from the given configuration.
+    #[must_use]
     pub fn new(config: VoiceConfig) -> Self {
         let is_enabled = config.enabled;
         Self {
@@ -211,6 +215,7 @@ impl VoiceRecorder {
     }
 
     /// Returns `true` while audio is being captured.
+    #[must_use]
     pub fn is_recording(&self) -> bool {
         self.is_recording.load(Ordering::SeqCst)
     }
@@ -348,7 +353,7 @@ async fn record_and_transcribe(
             }
             Err(e) => {
                 let _ = event_tx
-                    .send(VoiceEvent::Error(format!("Transcription failed: {}", e)))
+                    .send(VoiceEvent::Error(format!("Transcription failed: {e}")))
                     .await;
             }
         }
@@ -481,7 +486,7 @@ async fn transcribe_audio(
     let url = endpoint_url.unwrap_or("https://api.openai.com/v1/audio/transcriptions");
 
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(60))
+        .timeout(std::time::Duration::from_mins(1))
         .build()?;
 
     let file_part = reqwest::multipart::Part::bytes(wav_data)
@@ -507,9 +512,7 @@ async fn transcribe_audio(
     if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
         return Err(anyhow::anyhow!(
-            "Transcription API returned {}: {}",
-            status,
-            body
+            "Transcription API returned {status}: {body}"
         ));
     }
 
@@ -522,10 +525,9 @@ async fn transcribe_audio(
 // Global singleton
 // ---------------------------------------------------------------------------
 
-use once_cell::sync::Lazy;
 
-static GLOBAL_VOICE_RECORDER: Lazy<Arc<Mutex<VoiceRecorder>>> =
-    Lazy::new(|| Arc::new(Mutex::new(VoiceRecorder::new(VoiceConfig::default()))));
+static GLOBAL_VOICE_RECORDER: std::sync::LazyLock<Arc<Mutex<VoiceRecorder>>> =
+    std::sync::LazyLock::new(|| Arc::new(Mutex::new(VoiceRecorder::new(VoiceConfig::default()))));
 
 /// Access the global `VoiceRecorder` instance.
 ///
@@ -552,7 +554,7 @@ mod tests {
     fn tokens_with_scopes(scopes: Vec<&str>) -> OAuthTokens {
         OAuthTokens {
             access_token: "test_token".to_string(),
-            scopes: scopes.iter().map(|s| s.to_string()).collect(),
+            scopes: scopes.iter().map(std::string::ToString::to_string).collect(),
             ..Default::default()
         }
     }
@@ -586,7 +588,7 @@ mod tests {
 
     #[test]
     fn test_missing_all_scopes() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::remove_var(KILL_SWITCH_ENV) };
         let tokens = tokens_with_scopes(vec!["org:create_api_key"]);
@@ -608,7 +610,7 @@ mod tests {
 
     #[test]
     fn test_kill_switch_disables_voice() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::set_var(KILL_SWITCH_ENV, "1") };
         let tokens = tokens_with_scopes(vec!["user:inference", "user:profile"]);
@@ -621,7 +623,7 @@ mod tests {
 
     #[test]
     fn test_kill_switch_beats_no_auth() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::set_var(KILL_SWITCH_ENV, "true") };
         let result = check_voice_availability(None);

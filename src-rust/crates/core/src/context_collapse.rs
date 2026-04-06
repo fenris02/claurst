@@ -38,6 +38,7 @@ fn estimate_tokens(text: &str) -> u64 {
 }
 
 /// Estimate total tokens in a message list.
+#[must_use]
 pub fn estimate_message_tokens(messages: &[Message]) -> u64 {
     messages
         .iter()
@@ -49,9 +50,10 @@ pub fn estimate_message_tokens(messages: &[Message]) -> u64 {
         .sum()
 }
 
-/// Collapse a message list to fit within max_tokens.
+/// Collapse a message list to fit within `max_tokens`.
 /// Returns the collapsed message list and collapse state (if collapsing occurred).
 #[cfg(feature = "cached_microcompact")]
+#[must_use]
 pub fn collapse_context(
     messages: Vec<Message>, max_tokens: u64, strategy: CollapseStrategy,
 ) -> (Vec<Message>, Option<CollapseState>) {
@@ -74,7 +76,7 @@ pub fn collapse_context(
         messages_dropped: dropped_count,
         tokens_before: initial_tokens,
         tokens_after: final_tokens,
-        strategy_used: format!("{:?}", strategy),
+        strategy_used: format!("{strategy:?}"),
         collapsed_at: chrono::Utc::now().to_rfc3339(),
     };
 
@@ -145,7 +147,7 @@ fn summarize_messages(messages: Vec<Message>, _max_tokens: u64) -> (Vec<Message>
     (result, dropped)
 }
 
-/// Persist collapse state to ~/.claurst/context_collapse_state.json
+/// Persist collapse state to ~/.`claurst/context_collapse_state.json`
 #[cfg(feature = "cached_microcompact")]
 pub fn save_collapse_state(_session_id: &str, state: &CollapseState) -> anyhow::Result<()> {
     let path = dirs::home_dir()
@@ -159,8 +161,9 @@ pub fn save_collapse_state(_session_id: &str, state: &CollapseState) -> anyhow::
     Ok(())
 }
 
-/// Load collapse state from ~/.claurst/context_collapse_state.json
+/// Load collapse state from ~/.`claurst/context_collapse_state.json`
 #[cfg(feature = "cached_microcompact")]
+#[must_use]
 pub fn load_collapse_state(_session_id: &str) -> Option<CollapseState> {
     let path = dirs::home_dir()?
         .join(".claurst")

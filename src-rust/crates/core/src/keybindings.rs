@@ -47,7 +47,8 @@ pub struct ParsedBinding {
     pub context: KeyContext,
 }
 
-/// Parse a keystroke string like "ctrl+shift+enter" into ParsedKeystroke
+/// Parse a keystroke string like "ctrl+shift+enter" into `ParsedKeystroke`
+#[must_use]
 pub fn parse_keystroke(s: &str) -> Option<ParsedKeystroke> {
     let s = s.trim().to_lowercase();
     let mut ctrl = false;
@@ -137,6 +138,7 @@ pub const NON_REBINDABLE: &[&str] = &["ctrl+c", "ctrl+d", "ctrl+m"];
 /// - **Ctrl+I**: Jump forward in history
 /// - **Alt+D**: Delete word forward (already implemented)
 /// - **Ctrl+V**: Paste from clipboard (already implemented)
+#[must_use]
 pub fn default_bindings() -> Vec<ParsedBinding> {
     let defaults: &[(&str, &str, KeyContext)] = &[
         // ========== GLOBAL CONTROL ==========
@@ -301,12 +303,14 @@ pub struct UserBinding {
 }
 
 impl UserKeybindings {
+    #[must_use]
     pub fn from_json_str(content: &str) -> Self {
         serde_json::from_str(content)
             .or_else(|_| Self::from_block_config(content))
             .unwrap_or_default()
     }
 
+    #[must_use]
     pub fn load(config_dir: &Path) -> Self {
         let path = config_dir.join("keybindings.json");
         if let Ok(content) = std::fs::read_to_string(&path) {
@@ -351,6 +355,7 @@ pub struct KeybindingResolver {
 }
 
 impl KeybindingResolver {
+    #[must_use]
     pub fn new(user: &UserKeybindings) -> Self {
         let mut bindings = default_bindings();
 
@@ -360,7 +365,7 @@ impl KeybindingResolver {
                 let context = user_binding
                     .context
                     .as_deref()
-                    .and_then(|c| serde_json::from_str(&format!("\"{}\"", c)).ok())
+                    .and_then(|c| serde_json::from_str(&format!("\"{c}\"")).ok())
                     .unwrap_or(KeyContext::Global);
 
                 bindings.push(ParsedBinding {
@@ -420,6 +425,7 @@ impl KeybindingResolver {
         self.pending_chord.clear();
     }
 
+    #[must_use]
     pub fn has_pending_chord(&self) -> bool {
         !self.pending_chord.is_empty()
     }

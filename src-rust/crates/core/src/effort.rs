@@ -32,6 +32,7 @@ impl EffortLevel {
     ///
     /// Accepts lowercase strings: `"low"`, `"medium"`, `"high"`, `"max"`.
     /// Returns `None` for any other value.
+    #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_ascii_lowercase().as_str() {
             "low" => Some(Self::Low),
@@ -45,6 +46,7 @@ impl EffortLevel {
     /// The lowercase string name of this effort level.
     ///
     /// Round-trips with `from_str`.
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Low => "low",
@@ -57,11 +59,12 @@ impl EffortLevel {
     /// Return the extended-thinking budget in tokens for this effort level,
     /// or `None` if thinking should be disabled.
     ///
-    /// Values mirror the TypeScript `thinkingBudgetForEffort` mapping:
+    /// Values mirror the `TypeScript` `thinkingBudgetForEffort` mapping:
     ///   Low    → None  (no thinking)
     ///   Medium → 5 000
     ///   High   → 10 000
     ///   Max    → 20 000
+    #[must_use]
     pub fn thinking_budget_tokens(&self) -> Option<u32> {
         match self {
             Self::Low => None,
@@ -74,11 +77,12 @@ impl EffortLevel {
     /// Return the temperature override for this effort level, or `None` to
     /// use the model's default.
     ///
-    /// Values mirror the TypeScript source:
+    /// Values mirror the `TypeScript` source:
     ///   Low    → Some(0.0) — deterministic, cheap
     ///   Medium → None      — model default
     ///   High   → None      — model default
     ///   Max    → None      — model default
+    #[must_use]
     pub fn temperature(&self) -> Option<f32> {
         match self {
             Self::Low => Some(0.0),
@@ -88,11 +92,12 @@ impl EffortLevel {
 
     /// A single Unicode glyph used to represent this effort level in the TUI.
     ///
-    /// Glyphs mirror the TypeScript EffortCallout / status-bar rendering:
+    /// Glyphs mirror the `TypeScript` `EffortCallout` / status-bar rendering:
     ///   Low    → "○"  (empty circle)
     ///   Medium → "◐"  (half circle)
     ///   High   → "●"  (filled circle)
     ///   Max    → "◉"  (circled circle)
+    #[must_use]
     pub fn glyph(&self) -> &'static str {
         match self {
             Self::Low => "○",
@@ -103,6 +108,7 @@ impl EffortLevel {
     }
 
     /// Human-readable description of this effort level.
+    #[must_use]
     pub fn description(&self) -> &'static str {
         match self {
             Self::Low => "Quick, straightforward implementation with minimal overhead",
@@ -139,8 +145,7 @@ mod tests {
             assert_eq!(
                 parsed,
                 Some(level),
-                "from_str({:?}) should round-trip",
-                level
+                "from_str({level:?}) should round-trip"
             );
         }
     }
@@ -194,7 +199,7 @@ mod tests {
             EffortLevel::High,
             EffortLevel::Max,
         ] {
-            assert_eq!(format!("{}", level), level.as_str());
+            assert_eq!(format!("{level}"), level.as_str());
         }
     }
 }

@@ -1,6 +1,6 @@
 //! OAuth configuration for multiple environments.
 //!
-//! This module mirrors the TypeScript `src/constants/oauth.ts` and
+//! This module mirrors the `TypeScript` `src/constants/oauth.ts` and
 //! `src/services/oauth/crypto.ts` constants.  It is intentionally
 //! *configuration-only* — no live network I/O except for the optional
 //! `fetch_oauth_profile` helper at the bottom.
@@ -133,6 +133,7 @@ pub const MCP_CLIENT_METADATA_URL: &str = "https://claude.ai/oauth/claude-code-c
 ///
 /// Free-code always uses production OAuth. The `USER_TYPE=ant` gate and
 /// staging variant have been removed for the OSS/free build.
+#[must_use]
 pub fn get_oauth_config() -> &'static OAuthConfig {
     &PROD_OAUTH
 }
@@ -152,6 +153,7 @@ pub mod pkce {
     /// Uses `getrandom` via the `rand` crate's OS RNG through the `uuid`
     /// crate's v4 generator — both already in-tree.  Falls back to a
     /// time+pid mix if the OS RNG is unavailable.
+    #[must_use]
     pub fn generate_code_verifier() -> String {
         // 32 random bytes → 43-char Base64url string (same as the TS impl).
         let bytes = random_bytes_32();
@@ -159,12 +161,14 @@ pub mod pkce {
     }
 
     /// Compute `BASE64URL(SHA256(verifier))` — the S256 code challenge.
+    #[must_use]
     pub fn code_challenge(verifier: &str) -> String {
         let hash = Sha256::digest(verifier.as_bytes());
         URL_SAFE_NO_PAD.encode(hash)
     }
 
     /// Generate a random state parameter (16 Base64url chars).
+    #[must_use]
     pub fn generate_state() -> String {
         let bytes = random_bytes_32();
         let encoded = URL_SAFE_NO_PAD.encode(bytes);
@@ -249,6 +253,7 @@ pub async fn fetch_oauth_profile(
 // ---------------------------------------------------------------------------
 
 /// Build the OAuth authorization URL (mirrors `buildAuthUrl` in client.ts).
+#[must_use]
 pub fn build_auth_url(
     code_challenge: &str, state: &str, port: u16, is_manual: bool, login_with_claude_ai: bool,
     inference_only: bool,
@@ -264,7 +269,7 @@ pub fn build_auth_url(
     let redirect_uri = if is_manual {
         cfg.manual_redirect_url.to_string()
     } else {
-        format!("http://localhost:{}/callback", port)
+        format!("http://localhost:{port}/callback")
     };
 
     let scopes: Vec<&str> = if inference_only {
@@ -290,7 +295,7 @@ pub fn build_auth_url(
 // Codex (OpenAI) OAuth Token Storage
 // ---------------------------------------------------------------------------
 
-/// OpenAI Codex OAuth tokens, persisted to ~/.claurst/codex_tokens.json
+/// `OpenAI` Codex OAuth tokens, persisted to ~/.`claurst/codex_tokens.json`
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CodexTokens {
     pub access_token: String,
@@ -303,12 +308,12 @@ pub struct CodexTokens {
     pub expires_at: Option<u64>,
 }
 
-/// Path to the Codex tokens file (~/.claurst/codex_tokens.json)
+/// Path to the Codex tokens file (~/.`claurst/codex_tokens.json`)
 fn codex_tokens_path() -> Option<std::path::PathBuf> {
     dirs::home_dir().map(|h| h.join(".claurst").join("codex_tokens.json"))
 }
 
-/// Save Codex OAuth tokens to ~/.claurst/codex_tokens.json
+/// Save Codex OAuth tokens to ~/.`claurst/codex_tokens.json`
 pub fn save_codex_tokens(tokens: &CodexTokens) -> anyhow::Result<()> {
     let path =
         codex_tokens_path().ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
@@ -318,7 +323,8 @@ pub fn save_codex_tokens(tokens: &CodexTokens) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Load Codex OAuth tokens from ~/.claurst/codex_tokens.json
+/// Load Codex OAuth tokens from ~/.`claurst/codex_tokens.json`
+#[must_use]
 pub fn get_codex_tokens() -> Option<CodexTokens> {
     let path = codex_tokens_path()?;
     if !path.exists() {
@@ -341,10 +347,10 @@ pub fn clear_codex_tokens() -> anyhow::Result<()> {
 /// Returns true if the user has a valid Codex access token.
 /// Tokens are obtained via `/connect → OpenAI Codex` (browser OAuth flow)
 /// or by setting `CLAURST_USE_OPENAI=1` with a manually stored token.
+#[must_use]
 pub fn is_codex_subscriber() -> bool {
     get_codex_tokens()
-        .map(|t| !t.access_token.is_empty())
-        .unwrap_or(false)
+        .is_some_and(|t| !t.access_token.is_empty())
 }
 
 // ---------------------------------------------------------------------------

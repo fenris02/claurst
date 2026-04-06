@@ -1,15 +1,15 @@
-//! OpenAI Codex OAuth configuration and constants.
+//! `OpenAI` Codex OAuth configuration and constants.
 
-/// OpenAI Codex OAuth client ID (shared with the OpenCode ecosystem).
+/// `OpenAI` Codex OAuth client ID (shared with the `OpenCode` ecosystem).
 pub const CODEX_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 
-/// OpenAI OAuth issuer base URL.
+/// `OpenAI` OAuth issuer base URL.
 pub const CODEX_ISSUER: &str = "https://auth.openai.com";
 
-/// OpenAI OAuth authorization endpoint
+/// `OpenAI` OAuth authorization endpoint
 pub const CODEX_AUTHORIZE_URL: &str = "https://auth.openai.com/oauth/authorize";
 
-/// OpenAI OAuth token endpoint
+/// `OpenAI` OAuth token endpoint
 pub const CODEX_TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
 
 /// Codex Responses API endpoint (used for inference after login)
@@ -21,7 +21,7 @@ pub const CODEX_REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
 /// OAuth callback port
 pub const CODEX_OAUTH_PORT: u16 = 1455;
 
-/// OAuth scopes requested from OpenAI
+/// OAuth scopes requested from `OpenAI`
 pub const CODEX_SCOPES: &str = "openid profile email offline_access";
 
 /// Available Codex models

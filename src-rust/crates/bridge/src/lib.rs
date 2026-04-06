@@ -79,7 +79,8 @@ impl JwtClaims {
     /// Returns `true` if the `exp` claim is in the past.
     ///
     /// When `exp` is absent the token is treated as non-expired (permissive
-    /// default), matching the TypeScript behaviour in `jwtUtils.ts`.
+    /// default), matching the `TypeScript` behaviour in `jwtUtils.ts`.
+    #[must_use]
     pub fn is_expired(&self) -> bool {
         if let Some(exp) = self.exp {
             let now = chrono::Utc::now().timestamp();
@@ -91,6 +92,7 @@ impl JwtClaims {
 
     /// Remaining lifetime in seconds, or `None` if no `exp` claim or already
     /// expired.
+    #[must_use]
     pub fn remaining_secs(&self) -> Option<i64> {
         let exp = self.exp?;
         let now = chrono::Utc::now().timestamp();
@@ -101,15 +103,16 @@ impl JwtClaims {
 
 /// Decode just the expiry timestamp from a raw JWT string.
 /// Returns `None` if the token is malformed or has no `exp` claim.
+#[must_use]
 pub fn decode_jwt_expiry(token: &str) -> Option<i64> {
     JwtClaims::decode(token).ok()?.exp
 }
 
 /// Returns `true` if the token is expired (or unparseable).
+#[must_use]
 pub fn jwt_is_expired(token: &str) -> bool {
     JwtClaims::decode(token)
-        .map(|c| c.is_expired())
-        .unwrap_or(true)
+        .map_or(true, |c| c.is_expired())
 }
 
 // ---------------------------------------------------------------------------
@@ -119,9 +122,10 @@ pub fn jwt_is_expired(token: &str) -> bool {
 /// Compute a stable device fingerprint from machine-local information.
 ///
 /// Combines hostname, login user name, and home directory path, then SHA-256
-/// hashes them and returns the full hex digest. Matching the TypeScript
+/// hashes them and returns the full hex digest. Matching the `TypeScript`
 /// `trustedDevice.ts` algorithm so fingerprints are consistent across the
 /// two implementations.
+#[must_use]
 pub fn device_fingerprint() -> String {
     let mut input = String::with_capacity(128);
 
@@ -195,32 +199,30 @@ impl BridgeConfig {
     /// - `CLAURST_BRIDGE_URL` — overrides `server_url` and sets `enabled = true`
     /// - `CLAURST_BRIDGE_TOKEN` / `CLAUDE_BRIDGE_OAUTH_TOKEN` — sets `session_token`
     /// - `CLAUDE_BRIDGE_BASE_URL` — alternative URL override (ant-only dev override)
+    #[must_use]
     pub fn from_env() -> Self {
         let mut config = Self::default();
 
         // URL override (sets enabled implicitly)
         if let Ok(url) =
             std::env::var("CLAURST_BRIDGE_URL").or_else(|_| std::env::var("CLAUDE_BRIDGE_BASE_URL"))
-        {
-            if !url.is_empty() {
+            && !url.is_empty() {
                 config.server_url = url;
                 config.enabled = true;
             }
-        }
 
         // Token override
         if let Ok(token) = std::env::var("CLAURST_BRIDGE_TOKEN")
             .or_else(|_| std::env::var("CLAUDE_BRIDGE_OAUTH_TOKEN"))
-        {
-            if !token.is_empty() {
+            && !token.is_empty() {
                 config.session_token = Some(token);
             }
-        }
 
         config
     }
 
     /// Returns `true` only when the bridge is both enabled and has a token.
+    #[must_use]
     pub fn is_active(&self) -> bool {
         self.enabled && self.session_token.is_some()
     }
@@ -233,7 +235,7 @@ impl BridgeConfig {
         static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
         let re = RE.get_or_init(|| regex::Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap());
         if id.is_empty() || !re.is_match(id) {
-            anyhow::bail!("Invalid {}: contains unsafe characters", label);
+            anyhow::bail!("Invalid {label}: contains unsafe characters");
         }
         Ok(id)
     }
@@ -396,12 +398,13 @@ pub struct BridgeSession {
     state: Arc<RwLock<BridgeState>>,
     http: reqwest::Client,
     reconnect_count: u32,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     last_ping: Option<std::time::Instant>,
 }
 
 impl BridgeSession {
     /// Create a new bridge session; generates a fresh UUID for `session_id`.
+    #[must_use]
     pub fn new(config: BridgeConfig) -> Self {
         let session_id = uuid::Uuid::new_v4().to_string();
         let http = reqwest::Client::builder()
@@ -420,10 +423,12 @@ impl BridgeSession {
         }
     }
 
+    #[must_use]
     pub fn session_id(&self) -> &str {
         &self.session_id
     }
 
+    #[must_use]
     pub fn current_state(&self) -> BridgeState {
         self.state.read().clone()
     }
@@ -438,7 +443,7 @@ impl BridgeSession {
 
     /// Register this bridge session with the CCR server.
     ///
-    /// POST `/api/claude_code/sessions` — mirrors the TypeScript
+    /// POST `/api/claude_code/sessions` — mirrors the `TypeScript`
     /// `registerBridgeEnvironment` call in `bridgeApi.ts`.
     pub async fn register(&mut self) -> anyhow::Result<()> {
         let token = self
@@ -477,10 +482,10 @@ impl BridgeSession {
             }
             401 | 403 => {
                 self.set_state(BridgeState::Error(format!("Auth error: {status}")));
-                anyhow::bail!("Bridge register: auth error ({})", status)
+                anyhow::bail!("Bridge register: auth error ({status})")
             }
             _ => {
-                anyhow::bail!("Bridge register: server returned {}", status)
+                anyhow::bail!("Bridge register: server returned {status}")
             }
         }
     }
@@ -568,10 +573,10 @@ impl BridgeSession {
             204 => Ok(vec![]),
             401 | 403 => {
                 self.set_state(BridgeState::Error(format!("Auth error: {status}")));
-                anyhow::bail!("Bridge poll: auth error ({})", status)
+                anyhow::bail!("Bridge poll: auth error ({status})")
             }
             _ => {
-                anyhow::bail!("Bridge poll: server returned {}", status)
+                anyhow::bail!("Bridge poll: server returned {status}")
             }
         }
     }
@@ -618,7 +623,7 @@ impl BridgeSession {
                 count = events.len(),
                 "Bridge event upload failed"
             );
-            anyhow::bail!("Bridge upload: server returned {}", status);
+            anyhow::bail!("Bridge upload: server returned {status}");
         }
 
         debug!(
@@ -650,7 +655,7 @@ impl BridgeSession {
 
         let base_interval =
             std::time::Duration::from_millis(self.config.polling_interval_ms.max(500));
-        let max_backoff = std::time::Duration::from_secs(60);
+        let max_backoff = std::time::Duration::from_mins(1);
 
         loop {
             // Respect cancellation at the top of every iteration.
@@ -664,11 +669,10 @@ impl BridgeSession {
             while let Ok(ev) = event_rx.try_recv() {
                 events.push(ev);
             }
-            if !events.is_empty() {
-                if let Err(e) = self.upload_events(events).await {
+            if !events.is_empty()
+                && let Err(e) = self.upload_events(events).await {
                     warn!(session_id = %self.session_id, error = %e, "Event upload error");
                 }
-            }
 
             // --- Poll for incoming messages ---
             match self.poll_messages().await {
@@ -714,8 +718,8 @@ impl BridgeSession {
                     .min(max_backoff);
 
                     tokio::select! {
-                        _ = tokio::time::sleep(backoff) => {}
-                        _ = cancel.cancelled() => {
+                        () = tokio::time::sleep(backoff) => {}
+                        () = cancel.cancelled() => {
                             info!(
                                 session_id = %self.session_id,
                                 "Bridge cancelled during backoff sleep"
@@ -729,8 +733,8 @@ impl BridgeSession {
 
             // --- Wait for the next poll cycle ---
             tokio::select! {
-                _ = tokio::time::sleep(base_interval) => {}
-                _ = cancel.cancelled() => {
+                () = tokio::time::sleep(base_interval) => {}
+                () = cancel.cancelled() => {
                     info!(
                         session_id = %self.session_id,
                         "Bridge cancelled during idle sleep"
@@ -940,9 +944,7 @@ pub async fn start_bridge_session(
     let session_id = uuid::Uuid::new_v4().to_string();
 
     let hostname = {
-        hostname::get()
-            .map(|h| h.to_string_lossy().into_owned())
-            .unwrap_or_else(|_| "unknown".to_string())
+        hostname::get().map_or_else(|_| "unknown".to_string(), |h| h.to_string_lossy().into_owned())
     };
 
     let http = reqwest::Client::builder()
@@ -951,7 +953,7 @@ pub async fn start_bridge_session(
         .build()
         .context("start_bridge_session: failed to build HTTP client")?;
 
-    let register_url = format!("{}/api/bridge/sessions", server_url);
+    let register_url = format!("{server_url}/api/bridge/sessions");
 
     debug!(
         session_id = %session_id,
@@ -984,10 +986,9 @@ pub async fn start_bridge_session(
         }
         401 | 403 => {
             anyhow::bail!(
-                "Bridge session registration failed: authentication error (HTTP {}).\n\
+                "Bridge session registration failed: authentication error (HTTP {status}).\n\
                  Your token may be invalid or expired.\n\
-                 Get a new token from https://claude.ai (Settings → Remote Control).",
-                status
+                 Get a new token from https://claude.ai (Settings → Remote Control)."
             );
         }
         404 => {
@@ -1014,7 +1015,7 @@ pub async fn start_bridge_session(
     }
 
     // Build the shareable session URL.
-    let session_url = format!("{}/code/sessions/{}", server_url, session_id);
+    let session_url = format!("{server_url}/code/sessions/{session_id}");
 
     Ok(BridgeSessionInfo {
         session_id,
@@ -1090,8 +1091,7 @@ pub async fn poll_bridge_messages(
                 attempt += 1;
                 if attempt > max_retries {
                     anyhow::bail!(
-                        "poll_bridge_messages: rate-limited (HTTP 429) after {} retries",
-                        max_retries
+                        "poll_bridge_messages: rate-limited (HTTP 429) after {max_retries} retries"
                     );
                 }
                 let backoff = std::time::Duration::from_millis(1_000 * 2u64.pow(attempt - 1));
@@ -1103,10 +1103,10 @@ pub async fn poll_bridge_messages(
                 continue;
             }
             401 | 403 => {
-                anyhow::bail!("poll_bridge_messages: auth error (HTTP {})", status);
+                anyhow::bail!("poll_bridge_messages: auth error (HTTP {status})");
             }
             _ => {
-                anyhow::bail!("poll_bridge_messages: server returned HTTP {}", status);
+                anyhow::bail!("poll_bridge_messages: server returned HTTP {status}");
             }
         }
     }
@@ -1165,9 +1165,7 @@ pub async fn post_bridge_response(
         Ok(())
     } else {
         anyhow::bail!(
-            "post_bridge_response: server returned HTTP {} for msg {}",
-            status,
-            msg_id
+            "post_bridge_response: server returned HTTP {status} for msg {msg_id}"
         )
     }
 }
@@ -1223,7 +1221,7 @@ pub async fn post_bridge_event(info: &BridgeSessionInfo, payload: String) -> any
         debug!(session_id = %info.session_id, "Bridge event posted");
         Ok(())
     } else {
-        anyhow::bail!("post_bridge_event: server returned HTTP {}", status)
+        anyhow::bail!("post_bridge_event: server returned HTTP {status}")
     }
 }
 
@@ -1343,7 +1341,7 @@ pub async fn run_bridge_loop(
     let mut session = BridgeSession::new(config.clone());
 
     // Attempt initial registration; retry with back-off on transient errors.
-    let base_backoff = std::time::Duration::from_millis(1_000);
+    let base_backoff = std::time::Duration::from_secs(1);
     let max_backoff = std::time::Duration::from_secs(30);
     let mut reg_attempts = 0u32;
 
@@ -1362,7 +1360,7 @@ pub async fn run_bridge_loop(
                 let msg = e.to_string();
                 if msg.contains("auth error") || msg.contains("401") || msg.contains("403") {
                     let _ = tui_tx
-                        .send(TuiBridgeEvent::Error(format!("Bridge auth failed: {}", e)))
+                        .send(TuiBridgeEvent::Error(format!("Bridge auth failed: {e}")))
                         .await;
                     return Err(e);
                 }
@@ -1370,8 +1368,7 @@ pub async fn run_bridge_loop(
                 if reg_attempts >= config.max_reconnect_attempts.max(1) {
                     let _ = tui_tx
                         .send(TuiBridgeEvent::Error(format!(
-                            "Bridge registration failed after {} attempts: {}",
-                            reg_attempts, e
+                            "Bridge registration failed after {reg_attempts} attempts: {e}"
                         )))
                         .await;
                     return Err(e);
@@ -1385,8 +1382,8 @@ pub async fn run_bridge_loop(
                     .await;
 
                 tokio::select! {
-                    _ = tokio::time::sleep(backoff) => {}
-                    _ = cancel.cancelled() => {
+                    () = tokio::time::sleep(backoff) => {}
+                    () = cancel.cancelled() => {
                         return Ok(());
                     }
                 }
@@ -1431,7 +1428,7 @@ pub async fn run_bridge_loop(
     loop {
         tokio::select! {
             // Handle cancellation.
-            _ = cancel.cancelled() => {
+            () = cancel.cancelled() => {
                 let _ = tui_tx.send(TuiBridgeEvent::Disconnected { reason: None }).await;
                 break;
             }
@@ -1559,7 +1556,7 @@ pub async fn run_bridge_loop(
             }
 
             // Yield briefly to avoid busy-polling.
-            _ = tokio::time::sleep(poll_interval) => {}
+            () = tokio::time::sleep(poll_interval) => {}
         }
     }
 

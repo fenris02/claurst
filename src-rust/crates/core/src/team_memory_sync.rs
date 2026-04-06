@@ -29,12 +29,12 @@ const MAX_PUT_BODY_BYTES: usize = 200 * 1024;
 /// Persisted per-repo sync state (stored alongside local team-memory files).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SyncState {
-    /// ETag returned by the last successful GET or PUT.
+    /// `ETag` returned by the last successful GET or PUT.
     pub last_known_etag: Option<String>,
     /// Per-key server-side checksums (`"sha256:<hex>"`).
     /// Used to diff local vs remote without re-uploading unchanged entries.
     pub server_checksums: HashMap<String, String>,
-    /// Server-enforced max_entries from a prior 413 response.
+    /// Server-enforced `max_entries` from a prior 413 response.
     pub server_max_entries: Option<usize>,
 }
 
@@ -61,6 +61,7 @@ pub struct TeamMemoryData {
 // ---------------------------------------------------------------------------
 
 /// Compute `"sha256:<lowercase hex>"` of a string.
+#[must_use]
 pub fn content_checksum(content: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
@@ -73,7 +74,7 @@ pub fn content_checksum(content: &str) -> String {
 
 /// Reject paths that could escape the team-memory directory.
 ///
-/// Checks performed (mirroring the TypeScript `securePath` validation):
+/// Checks performed (mirroring the `TypeScript` `securePath` validation):
 /// - No null bytes
 /// - No URL-encoded traversal sequences (`%2e`, `%2f`, case-insensitive)
 /// - No backslashes
@@ -81,28 +82,28 @@ pub fn content_checksum(content: &str) -> String {
 /// - No `..` components
 pub fn validate_memory_path(path: &str) -> Result<()> {
     if path.contains('\0') {
-        anyhow::bail!("Path contains null bytes: {:?}", path);
+        anyhow::bail!("Path contains null bytes: {path:?}");
     }
     let lower = path.to_ascii_lowercase();
     if lower.contains("%2e") || lower.contains("%2f") {
-        anyhow::bail!("Path contains URL-encoded traversal sequences: {:?}", path);
+        anyhow::bail!("Path contains URL-encoded traversal sequences: {path:?}");
     }
     if path.contains('\\') {
-        anyhow::bail!("Path contains backslashes: {:?}", path);
+        anyhow::bail!("Path contains backslashes: {path:?}");
     }
     if path.starts_with('/') {
-        anyhow::bail!("Absolute Unix paths not allowed: {:?}", path);
+        anyhow::bail!("Absolute Unix paths not allowed: {path:?}");
     }
     // Windows-style absolute path: e.g. "C:" or "c:"
     if path.len() >= 2 {
         let mut chars = path.chars();
         let first = chars.next().unwrap();
         if first.is_ascii_alphabetic() && chars.next() == Some(':') {
-            anyhow::bail!("Absolute Windows paths not allowed: {:?}", path);
+            anyhow::bail!("Absolute Windows paths not allowed: {path:?}");
         }
     }
     if path.split('/').any(|component| component == "..") {
-        anyhow::bail!("Path traversal not allowed: {:?}", path);
+        anyhow::bail!("Path traversal not allowed: {path:?}");
     }
     Ok(())
 }
@@ -124,6 +125,7 @@ pub struct TeamMemorySync {
 }
 
 impl TeamMemorySync {
+    #[must_use]
     pub fn new(api_base: String, repo: String, token: String, team_dir: PathBuf) -> Self {
         Self {
             api_base,
@@ -163,7 +165,7 @@ impl TeamMemorySync {
         }
 
         if !http_status.is_success() {
-            anyhow::bail!("team memory pull failed with status {}", http_status);
+            anyhow::bail!("team memory pull failed with status {http_status}");
         }
 
         // Capture ETag before consuming the response body
@@ -190,13 +192,13 @@ impl TeamMemorySync {
             if let Some(parent) = local_path.parent() {
                 tokio::fs::create_dir_all(parent)
                     .await
-                    .with_context(|| format!("create_dir_all for {:?}", parent))?;
+                    .with_context(|| format!("create_dir_all for {parent:?}"))?;
             }
 
             if entry.content.len() <= MAX_FILE_SIZE_BYTES {
                 tokio::fs::write(&local_path, &entry.content)
                     .await
-                    .with_context(|| format!("writing {:?}", local_path))?;
+                    .with_context(|| format!("writing {local_path:?}"))?;
             }
             // Files exceeding MAX_FILE_SIZE_BYTES are silently skipped (same behaviour as push)
         }
@@ -222,7 +224,7 @@ impl TeamMemorySync {
         let changed: Vec<TeamMemoryEntry> = local_entries
             .into_iter()
             .filter(|entry| {
-                state.server_checksums.get(&entry.key).map(|s| s.as_str()) != Some(&entry.checksum)
+                state.server_checksums.get(&entry.key).map(std::string::String::as_str) != Some(&entry.checksum)
             })
             .collect();
 
@@ -321,8 +323,8 @@ impl TeamMemorySync {
             }
             412 => anyhow::bail!("Conflict (412 Precondition Failed): ETag mismatch, retry needed"),
             413 => anyhow::bail!("Payload too large (413)"),
-            401 | 403 => anyhow::bail!("Authentication error ({})", status),
-            _ => anyhow::bail!("Upload failed with status {}", status),
+            401 | 403 => anyhow::bail!("Authentication error ({status})"),
+            _ => anyhow::bail!("Upload failed with status {status}"),
         }
     }
 
@@ -340,16 +342,16 @@ impl TeamMemorySync {
         while let Some(dir) = stack.pop() {
             let mut read_dir = tokio::fs::read_dir(&dir)
                 .await
-                .with_context(|| format!("read_dir {:?}", dir))?;
+                .with_context(|| format!("read_dir {dir:?}"))?;
 
             while let Some(entry) = read_dir.next_entry().await? {
                 let path = entry.path();
                 if path.is_dir() {
                     stack.push(path);
-                } else if path.extension().map(|e| e == "md").unwrap_or(false) {
+                } else if path.extension().is_some_and(|e| e == "md") {
                     let content = tokio::fs::read_to_string(&path)
                         .await
-                        .with_context(|| format!("reading {:?}", path))?;
+                        .with_context(|| format!("reading {path:?}"))?;
 
                     if content.len() > MAX_FILE_SIZE_BYTES {
                         continue; // Skip files that are too large
@@ -391,6 +393,7 @@ pub struct SecretMatch {
 ///
 /// Returns one [`SecretMatch`] per distinct pattern that fired.  The actual
 /// matched text is intentionally **not** returned to avoid logging credentials.
+#[must_use]
 pub fn scan_for_secrets(content: &str) -> Vec<SecretMatch> {
     // Each tuple: (regex source, human-readable label)
     // Patterns ordered by likelihood of appearing in dev-team memory content.
@@ -437,13 +440,12 @@ pub fn scan_for_secrets(content: &str) -> Vec<SecretMatch> {
 
     for (pattern, label) in PATTERNS {
         // Lazily compile; the fn is not hot enough to warrant a static cache here
-        if let Ok(re) = regex::Regex::new(pattern) {
-            if re.is_match(content) {
+        if let Ok(re) = regex::Regex::new(pattern)
+            && re.is_match(content) {
                 findings.push(SecretMatch {
                     label: label.to_string(),
                 });
             }
-        }
     }
 
     findings
@@ -492,7 +494,7 @@ mod tests {
             "a.md",
         ];
         for p in &ok_paths {
-            assert!(validate_memory_path(p).is_ok(), "should accept: {}", p);
+            assert!(validate_memory_path(p).is_ok(), "should accept: {p}");
         }
     }
 

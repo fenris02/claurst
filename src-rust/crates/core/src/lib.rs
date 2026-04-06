@@ -154,6 +154,7 @@ pub mod error {
 
     impl ClaudeError {
         /// Return `true` when the caller should retry the request.
+        #[must_use]
         pub fn is_retryable(&self) -> bool {
             matches!(
                 self,
@@ -165,6 +166,7 @@ pub mod error {
 
         /// Return `true` for errors that mean the conversation cannot continue
         /// without intervention (e.g. compaction or context-window reset).
+        #[must_use]
         pub fn is_context_limit(&self) -> bool {
             matches!(
                 self,
@@ -337,6 +339,7 @@ pub mod types {
         }
 
         /// Create a user message composed of multiple content blocks.
+        #[must_use]
         pub fn user_blocks(blocks: Vec<ContentBlock>) -> Self {
             Self {
                 role: Role::User,
@@ -357,6 +360,7 @@ pub mod types {
         }
 
         /// Create an assistant message composed of multiple content blocks.
+        #[must_use]
         pub fn assistant_blocks(blocks: Vec<ContentBlock>) -> Self {
             Self {
                 role: Role::Assistant,
@@ -367,6 +371,7 @@ pub mod types {
         }
 
         /// Extract the first text content from this message.
+        #[must_use]
         pub fn get_text(&self) -> Option<&str> {
             match &self.content {
                 MessageContent::Text(t) => Some(t.as_str()),
@@ -381,6 +386,7 @@ pub mod types {
         }
 
         /// Collect all text content blocks into one concatenated string.
+        #[must_use]
         pub fn get_all_text(&self) -> String {
             match &self.content {
                 MessageContent::Text(t) => t.clone(),
@@ -399,6 +405,7 @@ pub mod types {
         }
 
         /// Return references to all `ToolUse` blocks in this message.
+        #[must_use]
         pub fn get_tool_use_blocks(&self) -> Vec<&ContentBlock> {
             match &self.content {
                 MessageContent::Blocks(blocks) => blocks
@@ -410,6 +417,7 @@ pub mod types {
         }
 
         /// Return references to all `ToolResult` blocks in this message.
+        #[must_use]
         pub fn get_tool_result_blocks(&self) -> Vec<&ContentBlock> {
             match &self.content {
                 MessageContent::Blocks(blocks) => blocks
@@ -421,6 +429,7 @@ pub mod types {
         }
 
         /// Return references to all `Thinking` blocks in this message.
+        #[must_use]
         pub fn get_thinking_blocks(&self) -> Vec<&ContentBlock> {
             match &self.content {
                 MessageContent::Blocks(blocks) => blocks
@@ -432,6 +441,7 @@ pub mod types {
         }
 
         /// Returns all content blocks (wrapping a single text into a vec).
+        #[must_use]
         pub fn content_blocks(&self) -> Vec<ContentBlock> {
             match &self.content {
                 MessageContent::Text(t) => vec![ContentBlock::Text { text: t.clone() }],
@@ -440,6 +450,7 @@ pub mod types {
         }
 
         /// Check whether this message has any tool use blocks.
+        #[must_use]
         pub fn has_tool_use(&self) -> bool {
             !self.get_tool_use_blocks().is_empty()
         }
@@ -560,10 +571,12 @@ pub mod types {
     }
 
     impl UsageInfo {
+        #[must_use]
         pub fn total_input(&self) -> u64 {
             self.input_tokens + self.cache_creation_input_tokens + self.cache_read_input_tokens
         }
 
+        #[must_use]
         pub fn total(&self) -> u64 {
             self.total_input() + self.output_tokens
         }
@@ -879,6 +892,7 @@ pub mod config {
 
     /// Configuration for a file formatter tool.
     #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[derive(Default)]
     pub struct FormatterConfig {
         /// Command to run, e.g. `["prettier", "--write"]`.
         pub command: Vec<String>,
@@ -889,15 +903,7 @@ pub mod config {
         pub disabled: bool,
     }
 
-    impl Default for FormatterConfig {
-        fn default() -> Self {
-            Self {
-                command: Vec::new(),
-                extensions: Vec::new(),
-                disabled: false,
-            }
-        }
-    }
+    
 
     #[derive(Debug, Clone, Serialize, Deserialize, Default)]
     pub struct ProjectSettings {
@@ -910,6 +916,7 @@ pub mod config {
 
     /// Return the three built-in named agent definitions.
     /// User-defined agents in `settings.json` can override these by name.
+    #[must_use]
     pub fn default_agents() -> HashMap<String, AgentDefinition> {
         let mut m = HashMap::new();
         m.insert("build".to_string(), AgentDefinition {
@@ -951,6 +958,7 @@ pub mod config {
         /// When a non-Anthropic provider is active and no model is explicitly set,
         /// returns that provider's canonical default model instead of `DEFAULT_MODEL`
         /// (which is Claude-specific).
+        #[must_use]
         pub fn effective_model(&self) -> &str {
             if let Some(ref m) = self.model {
                 return m;
@@ -964,7 +972,7 @@ pub mod config {
                 Some("mistral") => "mistral-large-latest",
                 Some("xai") => "grok-2",
                 Some("openrouter") => "anthropic/claude-sonnet-4",
-                Some("togetherai") | Some("together-ai") => {
+                Some("togetherai" | "together-ai") => {
                     "meta-llama/Llama-3.3-70B-Instruct-Turbo"
                 }
                 Some("perplexity") => "sonar-pro",
@@ -982,12 +990,14 @@ pub mod config {
         }
 
         /// Resolve the effective max-tokens.
+        #[must_use]
         pub fn effective_max_tokens(&self) -> u32 {
             self.max_tokens
                 .unwrap_or(crate::constants::DEFAULT_MAX_TOKENS)
         }
 
         /// Resolve the effective compact threshold (0.0 - 1.0).
+        #[must_use]
         pub fn effective_compact_threshold(&self) -> f32 {
             if self.compact_threshold > 0.0 {
                 self.compact_threshold
@@ -1006,6 +1016,7 @@ pub mod config {
 
         /// Resolve the prompt text for the selected output style, including
         /// user-defined styles loaded from `~/.claurst/output-styles/`.
+        #[must_use]
         pub fn resolve_output_style_prompt(&self) -> Option<String> {
             let style_name = self.output_style.as_deref().unwrap_or("default");
             let styles = crate::output_styles::all_styles(&Settings::config_dir());
@@ -1015,6 +1026,7 @@ pub mod config {
         }
 
         /// Resolve the API key from the config, then from `ANTHROPIC_API_KEY`.
+        #[must_use]
         pub fn resolve_api_key(&self) -> Option<String> {
             self.api_key
                 .clone()
@@ -1099,14 +1111,11 @@ pub mod config {
                 tokens
             };
 
-            if let Some(cred) = tokens.effective_credential() {
-                Some((cred.to_string(), tokens.uses_bearer_auth()))
-            } else {
-                None
-            }
+            tokens.effective_credential().map(|cred| (cred.to_string(), tokens.uses_bearer_auth()))
         }
 
         /// Resolve the API base URL, checking `ANTHROPIC_BASE_URL` first.
+        #[must_use]
         pub fn resolve_api_base(&self) -> String {
             std::env::var("ANTHROPIC_BASE_URL")
                 .unwrap_or_else(|_| crate::constants::ANTHROPIC_API_BASE.to_string())
@@ -1115,6 +1124,7 @@ pub mod config {
 
     impl Settings {
         /// The per-user configuration directory (`~/.claurst`).
+        #[must_use]
         pub fn config_dir() -> PathBuf {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
@@ -1122,6 +1132,7 @@ pub mod config {
         }
 
         /// Full path to the global settings JSON file.
+        #[must_use]
         pub fn global_settings_path() -> PathBuf {
             Self::config_dir().join("settings.json")
         }
@@ -1176,6 +1187,7 @@ pub mod config {
         /// - `settings.provider` wins over `settings.config.provider` (if set).
         /// - `settings.providers` entries are merged into `config.provider_configs`, with the
         ///   embedded config values taking precedence for keys already present.
+        #[must_use]
         pub fn effective_config(&self) -> Config {
             let mut config = self.config.clone();
             // Top-level `provider` key overrides config.provider when set.
@@ -1262,7 +1274,7 @@ pub mod config {
 
         /// Merge two settings with `override_settings` taking priority.
         /// Simple strategy: override wins for all scalar fields; Vecs are
-        /// concatenated (deduped); HashMaps are merged (override wins on collision).
+        /// concatenated (deduped); `HashMaps` are merged (override wins on collision).
         fn merge(base: Self, over: Self) -> Self {
             // Helper to merge two HashMaps (over wins on key collision).
             fn merge_map<K: std::hash::Hash + Eq + Clone, V: Clone>(
@@ -1282,10 +1294,10 @@ pub mod config {
                 theme: over.config.theme,
                 output_style: over.config.output_style.or(base.config.output_style),
                 auto_compact: over.config.auto_compact || base.config.auto_compact,
-                compact_threshold: if over.config.compact_threshold != 0.0 {
-                    over.config.compact_threshold
-                } else {
+                compact_threshold: if over.config.compact_threshold == 0.0 {
                     base.config.compact_threshold
+                } else {
+                    over.config.compact_threshold
                 },
                 verbose: over.config.verbose || base.config.verbose,
                 output_format: over.config.output_format,
@@ -1411,6 +1423,7 @@ pub mod config {
 
     /// Strip `//` line-comments and `/* */` block-comments from a JSON string
     /// (JSONC format), preserving newlines for error-message line numbers.
+    #[must_use]
     pub fn strip_jsonc_comments(input: &str) -> String {
         let mut result = String::with_capacity(input.len());
         let mut chars = input.chars().peekable();
@@ -1470,6 +1483,7 @@ pub mod config {
 
     /// Replace `{env:VARNAME}` patterns in a string with environment variable
     /// values.  Missing variables are replaced with an empty string.
+    #[must_use]
     pub fn substitute_env_vars(s: &str) -> String {
         let mut result = s.to_string();
         loop {
@@ -1480,7 +1494,7 @@ pub mod config {
                     Some(rel_end) => {
                         let var_name = result[start + 5..start + rel_end].to_string();
                         let value = std::env::var(&var_name).unwrap_or_default();
-                        result.replace_range(start..start + rel_end + 1, &value);
+                        result.replace_range(start..=(start + rel_end), &value);
                     }
                 },
             }
@@ -1575,6 +1589,7 @@ pub mod context {
     }
 
     impl ContextBuilder {
+        #[must_use]
         pub fn new(cwd: PathBuf) -> Self {
             Self {
                 cwd,
@@ -1582,6 +1597,7 @@ pub mod context {
             }
         }
 
+        #[must_use]
         pub fn disable_claude_mds(mut self, val: bool) -> Self {
             self.disable_claude_mds = val;
             self
@@ -1602,7 +1618,7 @@ pub mod context {
             // IDE context — injected when an IDE extension is connected.
             // Mirrors TS getContextAttachments() → IdeContext attachment.
             if let Some(ide_ctx) = crate::attachments::get_ide_context() {
-                parts.push(format!("# IDE Context\n{}", ide_ctx));
+                parts.push(format!("# IDE Context\n{ide_ctx}"));
             }
 
             parts.join("\n\n")
@@ -1613,13 +1629,12 @@ pub mod context {
             let mut parts = vec![];
 
             let date = chrono::Local::now().format("%A, %B %d, %Y").to_string();
-            parts.push(format!("Today's date is {}.", date));
+            parts.push(format!("Today's date is {date}."));
 
-            if !self.disable_claude_mds {
-                if let Some(claude_md) = self.find_and_read_claude_md().await {
+            if !self.disable_claude_mds
+                && let Some(claude_md) = self.find_and_read_claude_md().await {
                     parts.push(claude_md);
                 }
-            }
 
             parts.join("\n\n")
         }
@@ -1665,15 +1680,14 @@ pub mod context {
                 let global_claude_md = home
                     .join(".claurst")
                     .join(crate::constants::CLAUDE_MD_FILENAME);
-                if global_claude_md.exists() {
-                    if let Ok(content) = tokio::fs::read_to_string(&global_claude_md).await {
+                if global_claude_md.exists()
+                    && let Ok(content) = tokio::fs::read_to_string(&global_claude_md).await {
                         claude_mds.push(format!(
                             "# Memory (from {})\n{}",
                             global_claude_md.display(),
                             content
                         ));
                     }
-                }
             }
 
             // Walk from cwd up to filesystem root, collecting AGENTS.md
@@ -1681,15 +1695,14 @@ pub mod context {
             let mut project_mds: Vec<String> = vec![];
             while let Some(d) = dir {
                 let candidate = d.join(crate::constants::CLAUDE_MD_FILENAME);
-                if candidate.exists() {
-                    if let Ok(content) = tokio::fs::read_to_string(&candidate).await {
+                if candidate.exists()
+                    && let Ok(content) = tokio::fs::read_to_string(&candidate).await {
                         project_mds.push(format!(
                             "# Project Memory (from {})\n{}",
                             candidate.display(),
                             content
                         ));
                     }
-                }
                 dir = d.parent();
             }
             // Reverse so outermost directory comes first
@@ -1721,18 +1734,19 @@ pub mod permissions {
     /// no explicit rule matches.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     pub enum PermissionLevel {
-        /// Read-only operations (Glob, Grep, Read, WebSearch, etc.).
+        /// Read-only operations (Glob, Grep, Read, `WebSearch`, etc.).
         Read,
         /// File write/edit operations (Write, Edit).
         Write,
         /// Shell command execution (Bash).
         Execute,
-        /// Outbound network access (WebFetch).
+        /// Outbound network access (`WebFetch`).
         Network,
     }
 
     impl PermissionLevel {
         /// Derive the permission level from a well-known tool name.
+        #[must_use]
         pub fn for_tool(tool_name: &str) -> Self {
             match tool_name {
                 "Bash" | "bash" => Self::Execute,
@@ -1783,13 +1797,13 @@ pub mod permissions {
     impl PermissionRule {
         /// Returns `true` when this rule matches the given tool name and
         /// optional path argument.
+        #[must_use]
         pub fn matches(&self, tool_name: &str, path: Option<&str>) -> bool {
             // Tool name check
-            if let Some(ref rule_tool) = self.tool_name {
-                if rule_tool != tool_name {
+            if let Some(ref rule_tool) = self.tool_name
+                && rule_tool != tool_name {
                     return false;
                 }
-            }
             // Path pattern check — only when a pattern is specified
             if let Some(ref pattern) = self.path_pattern {
                 let Some(p) = path else {
@@ -1870,6 +1884,7 @@ pub mod permissions {
     ///
     /// Mirrors the TS `createPermissionRequestMessage` / `permissionExplainer`
     /// output style.
+    #[must_use]
     pub fn format_permission_reason(
         tool_name: &str, description: &str, path: Option<&str>, level: PermissionLevel,
     ) -> String {
@@ -1877,8 +1892,7 @@ pub mod permissions {
             PermissionLevel::Execute => {
                 let cmd = path.unwrap_or(description);
                 format!(
-                    "Bash wants to run: `{}`\nThis will execute a shell command.",
-                    cmd
+                    "Bash wants to run: `{cmd}`\nThis will execute a shell command."
                 )
             }
             PermissionLevel::Write => {
@@ -1891,18 +1905,17 @@ pub mod permissions {
                 } else {
                     "\nThis will write to the filesystem."
                 };
-                format!("{} wants to write to `{}`{}", tool_name, target, extra)
+                format!("{tool_name} wants to write to `{target}`{extra}")
             }
             PermissionLevel::Network => {
                 let url = path.unwrap_or(description);
                 format!(
-                    "WebFetch wants to fetch: `{}`\nThis will make an outbound HTTP request.",
-                    url
+                    "WebFetch wants to fetch: `{url}`\nThis will make an outbound HTTP request."
                 )
             }
             PermissionLevel::Read => {
                 let target = path.unwrap_or(description);
-                format!("{} wants to read: `{}`", tool_name, target)
+                format!("{tool_name} wants to read: `{target}`")
             }
         }
     }
@@ -1927,7 +1940,7 @@ pub mod permissions {
         pub session_rules: Vec<PermissionRule>,
         /// Rules loaded from / saved to settings.json.
         pub persistent_rules: Vec<PermissionRule>,
-        /// Pending interactive decisions keyed by tool_use_id.
+        /// Pending interactive decisions keyed by `tool_use_id`.
         pending: Vec<PendingPermission>,
     }
 
@@ -1957,12 +1970,13 @@ pub mod permissions {
         /// Evaluate whether `tool_name` should be allowed to run.
         ///
         /// Evaluation order (faithful to TS behaviour):
-        /// 1. BypassPermissions → always Allow.
+        /// 1. `BypassPermissions` → always Allow.
         /// 2. Check deny rules (persistent first, then session) → if any matched, Deny.
         /// 3. Check allow rules (persistent first, then session) → if any matched, Allow.
-        /// 4. AcceptEdits → Allow (auto-accept file edits).
+        /// 4. `AcceptEdits` → Allow (auto-accept file edits).
         /// 5. Plan mode → Allow reads; deny everything else.
         /// 6. Default → derive from tool danger level.
+        #[must_use]
         pub fn evaluate(
             &self, tool_name: &str, description: &str, path: Option<&str>,
         ) -> PermissionDecision {
@@ -2087,8 +2101,7 @@ pub mod permissions {
         ) -> crate::error::Result<()> {
             if idx >= settings.permission_rules.len() {
                 return Err(crate::error::ClaudeError::Config(format!(
-                    "Rule index {} out of bounds",
-                    idx
+                    "Rule index {idx} out of bounds"
                 )));
             }
             settings.permission_rules.remove(idx);
@@ -2144,7 +2157,7 @@ pub mod permissions {
         pub details: Option<String>,
         pub is_read_only: bool,
         /// Context-aware description showing user WHY the tool needs permission.
-        /// E.g. "bash: execute `ls -la /home`", "write file: /path/to/.bashrc", "fetch: https://example.com"
+        /// E.g. "bash: execute `ls -la /home`", "write file: /path/to/.bashrc", "fetch: <https://example.com>"
         pub context_description: Option<String>,
     }
 
@@ -2348,7 +2361,7 @@ pub mod permissions {
             let m = mgr(PermissionMode::Default);
             match m.evaluate("Bash", "echo hello", None) {
                 PermissionDecision::Ask { .. } => {}
-                other => panic!("Expected Ask, got {:?}", other),
+                other => panic!("Expected Ask, got {other:?}"),
             }
         }
 
@@ -2431,7 +2444,7 @@ pub mod permissions {
             });
             match m.evaluate("Write", "write", Some("/etc/hosts")) {
                 PermissionDecision::Ask { .. } => {}
-                other => panic!("Expected Ask, got {:?}", other),
+                other => panic!("Expected Ask, got {other:?}"),
             }
         }
 
@@ -2529,6 +2542,7 @@ pub mod history {
     }
 
     impl ConversationSession {
+        #[must_use]
         pub fn new(model: String) -> Self {
             let now = chrono::Utc::now();
             Self {
@@ -2556,10 +2570,12 @@ pub mod history {
             self.updated_at = chrono::Utc::now();
         }
 
+        #[must_use]
         pub fn message_count(&self) -> usize {
             self.messages.len()
         }
 
+        #[must_use]
         pub fn last_user_message(&self) -> Option<&Message> {
             self.messages
                 .iter()
@@ -2578,7 +2594,7 @@ pub mod history {
         let idx = session.messages.len();
         let checkpoint = SessionCheckpoint {
             message_idx: idx,
-            label: label.map(|s| s.to_string()),
+            label: label.map(std::string::ToString::to_string),
             created_at: chrono::Utc::now(),
             snapshot: session.messages.clone(),
         };
@@ -2622,7 +2638,7 @@ pub mod history {
 
     /// Load a specific session by ID.
     pub async fn load_session(id: &str) -> anyhow::Result<ConversationSession> {
-        let path = sessions_dir().join(format!("{}.json", id));
+        let path = sessions_dir().join(format!("{id}.json"));
         let content = tokio::fs::read_to_string(&path).await?;
         Ok(serde_json::from_str(&content)?)
     }
@@ -2635,22 +2651,17 @@ pub mod history {
         }
 
         let mut sessions = vec![];
-        match tokio::fs::read_dir(&dir).await {
-            Ok(mut entries) => {
-                while let Ok(Some(entry)) = entries.next_entry().await {
-                    let path = entry.path();
-                    if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                        if let Ok(content) = tokio::fs::read_to_string(&path).await {
-                            if let Ok(session) =
-                                serde_json::from_str::<ConversationSession>(&content)
-                            {
-                                sessions.push(session);
-                            }
+        if let Ok(mut entries) = tokio::fs::read_dir(&dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("json")
+                    && let Ok(content) = tokio::fs::read_to_string(&path).await
+                        && let Ok(session) =
+                            serde_json::from_str::<ConversationSession>(&content)
+                        {
+                            sessions.push(session);
                         }
-                    }
-                }
             }
-            Err(_) => {}
         }
 
         sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
@@ -2659,7 +2670,7 @@ pub mod history {
 
     /// Delete a session by ID.
     pub async fn delete_session(id: &str) -> anyhow::Result<()> {
-        let path = sessions_dir().join(format!("{}.json", id));
+        let path = sessions_dir().join(format!("{id}.json"));
         if path.exists() {
             tokio::fs::remove_file(&path).await?;
         }
@@ -2714,8 +2725,8 @@ pub mod history {
             messages: source.messages[..clamped_idx].to_vec(),
             model: source.model.clone(),
             title: new_title
-                .map(|t| t.to_string())
-                .or_else(|| source.title.as_ref().map(|t| format!("{} (branch)", t))),
+                .map(std::string::ToString::to_string)
+                .or_else(|| source.title.as_ref().map(|t| format!("{t} (branch)"))),
             working_dir: source.working_dir.clone(),
             tags: source.tags.clone(),
             branch_from: Some(source_id.to_string()),
@@ -2739,11 +2750,10 @@ pub mod history {
         all.into_iter()
             .filter(|s| {
                 // Check title
-                if let Some(ref title) = s.title {
-                    if title.to_lowercase().contains(&lower_query) {
+                if let Some(ref title) = s.title
+                    && title.to_lowercase().contains(&lower_query) {
                         return true;
                     }
-                }
                 // Check tags
                 if s.tags
                     .iter()
@@ -2799,11 +2809,13 @@ pub mod cost {
         };
 
         /// Default pricing is Opus (most capable, highest cost).
+        #[must_use]
         pub fn default_pricing() -> Self {
             Self::OPUS
         }
 
         /// Pick pricing based on model name substring matching.
+        #[must_use]
         pub fn for_model(model: &str) -> Self {
             if model.contains("opus") {
                 Self::OPUS
@@ -2834,6 +2846,7 @@ pub mod cost {
 
     // We need a default for RwLock<ModelPricing> -- use Opus as default.
     impl CostTracker {
+        #[must_use]
         pub fn new() -> Arc<Self> {
             Arc::new(Self {
                 pricing: parking_lot::RwLock::new(ModelPricing::OPUS),
@@ -2841,6 +2854,7 @@ pub mod cost {
             })
         }
 
+        #[must_use]
         pub fn with_model(model: &str) -> Arc<Self> {
             Arc::new(Self {
                 pricing: parking_lot::RwLock::new(ModelPricing::for_model(model)),
@@ -2903,9 +2917,9 @@ pub mod cost {
             let cost = self.total_cost_usd();
             let total = self.total_tokens();
             if cost < 0.01 {
-                format!("{} tokens (<$0.01)", total)
+                format!("{total} tokens (<$0.01)")
             } else {
-                format!("{} tokens (${:.2})", total, cost)
+                format!("{total} tokens (${cost:.2})")
             }
         }
     }
@@ -2969,13 +2983,11 @@ pub mod hooks {
 
         for entry in entries {
             // Apply tool filter if set
-            if let Some(ref filter) = entry.tool_filter {
-                if let Some(ref tool) = ctx.tool_name {
-                    if !filter.is_empty() && filter != tool && filter != "*" {
+            if let Some(ref filter) = entry.tool_filter
+                && let Some(ref tool) = ctx.tool_name
+                    && !filter.is_empty() && filter != tool && filter != "*" {
                         continue;
                     }
-                }
-            }
 
             debug!(command = %entry.command, event = ?event, "Running hook");
 
@@ -3018,7 +3030,7 @@ pub mod hooks {
 
             if !exit_ok && entry.blocking {
                 let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-                let reason = if !stderr.is_empty() { stderr } else { stdout };
+                let reason = if stderr.is_empty() { stdout } else { stderr };
                 return HookOutcome::Blocked(format!(
                     "Hook '{}' blocked execution: {}",
                     entry.command,
@@ -3041,7 +3053,7 @@ pub mod hooks {
 
 /// OAuth 2.0 PKCE authentication support.
 ///
-/// Supports two login paths mirroring the TypeScript implementation:
+/// Supports two login paths mirroring the `TypeScript` implementation:
 /// - **Console** (`org:create_api_key` scope): exchanges access token for an API key.
 /// - **Claude.ai** (`user:inference` scope): uses the access token as a Bearer credential.
 pub mod oauth {
@@ -3103,6 +3115,7 @@ pub mod oauth {
     impl OAuthTokens {
         /// Returns true if the token requires Bearer-style authorization
         /// (i.e. Claude.ai subscription with `user:inference` scope).
+        #[must_use]
         pub fn uses_bearer_auth(&self) -> bool {
             self.scopes.iter().any(|s| s == CLAUDE_AI_INFERENCE_SCOPE)
         }
@@ -3110,6 +3123,7 @@ pub mod oauth {
         /// The credential to present to the Anthropic API:
         /// - Console flow: the stored `api_key` (sk-ant-…)
         /// - Claude.ai flow: the `access_token` itself (Bearer)
+        #[must_use]
         pub fn effective_credential(&self) -> Option<&str> {
             if self.uses_bearer_auth() {
                 if self.access_token.is_empty() {
@@ -3123,6 +3137,7 @@ pub mod oauth {
         }
 
         /// True if the access token has passed (or is within 5 minutes of) its expiry.
+        #[must_use]
         pub fn is_expired(&self) -> bool {
             if let Some(exp) = self.expires_at_ms {
                 let buffer_ms: i64 = 5 * 60 * 1000;
@@ -3133,6 +3148,7 @@ pub mod oauth {
             }
         }
 
+        #[must_use]
         pub fn token_file_path() -> std::path::PathBuf {
             dirs::home_dir()
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -3167,6 +3183,7 @@ pub mod oauth {
     // ---- PKCE helpers ----
 
     /// Generate a 32-byte random code verifier, base64url-encoded (no padding).
+    #[must_use]
     pub fn generate_code_verifier() -> String {
         use base64::Engine;
         let mut bytes = [0u8; 32];
@@ -3178,6 +3195,7 @@ pub mod oauth {
     }
 
     /// Derive the PKCE code challenge from a verifier: BASE64URL(SHA256(verifier)).
+    #[must_use]
     pub fn generate_code_challenge(verifier: &str) -> String {
         use base64::Engine;
         use sha2::{Digest, Sha256};
@@ -3186,6 +3204,7 @@ pub mod oauth {
     }
 
     /// Generate a random OAuth state parameter for CSRF protection.
+    #[must_use]
     pub fn generate_state() -> String {
         use base64::Engine;
         let mut bytes = [0u8; 32];
@@ -3199,6 +3218,7 @@ pub mod oauth {
     // ---- URL builder ----
 
     /// Build an OAuth authorization URL with all required PKCE parameters.
+    #[must_use]
     pub fn build_auth_url(
         authorize_base: &str, code_challenge: &str, state: &str, callback_port: u16,
         is_manual: bool,
@@ -3212,7 +3232,7 @@ pub mod oauth {
             let redirect = if is_manual {
                 MANUAL_REDIRECT_URL.to_string()
             } else {
-                format!("http://localhost:{}/callback", callback_port)
+                format!("http://localhost:{callback_port}/callback")
             };
             q.append_pair("redirect_uri", &redirect);
             q.append_pair("scope", &ALL_SCOPES.join(" "));
@@ -3261,7 +3281,7 @@ pub mod tasks {
 
     use chrono::{DateTime, Utc};
     use dashmap::DashMap;
-    use once_cell::sync::Lazy;
+    
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
 
@@ -3279,7 +3299,7 @@ pub mod tasks {
             match self {
                 TaskStatus::Running => write!(f, "running"),
                 TaskStatus::Completed => write!(f, "completed"),
-                TaskStatus::Failed(reason) => write!(f, "failed: {}", reason),
+                TaskStatus::Failed(reason) => write!(f, "failed: {reason}"),
                 TaskStatus::Cancelled => write!(f, "cancelled"),
             }
         }
@@ -3319,6 +3339,7 @@ pub mod tasks {
         }
 
         /// Return `true` if the task is still running.
+        #[must_use]
         pub fn is_running(&self) -> bool {
             matches!(self.status, TaskStatus::Running)
         }
@@ -3331,6 +3352,7 @@ pub mod tasks {
 
     impl TaskRegistry {
         /// Create a new empty registry.
+        #[must_use]
         pub fn new() -> Self {
             Self {
                 tasks: Arc::new(DashMap::new()),
@@ -3338,6 +3360,7 @@ pub mod tasks {
         }
 
         /// Register a new task.  Returns the assigned task ID.
+        #[must_use]
         pub fn register(&self, task: BackgroundTask) -> String {
             let id = task.id.clone();
             self.tasks.insert(id.clone(), task);
@@ -3363,11 +3386,13 @@ pub mod tasks {
         }
 
         /// Look up a task by ID.
+        #[must_use]
         pub fn get(&self, id: &str) -> Option<BackgroundTask> {
             self.tasks.get(id).map(|e| e.clone())
         }
 
         /// Return a snapshot of all tasks, ordered by `started_at` ascending.
+        #[must_use]
         pub fn list(&self) -> Vec<BackgroundTask> {
             let mut tasks: Vec<BackgroundTask> =
                 self.tasks.iter().map(|e| e.value().clone()).collect();
@@ -3400,9 +3425,10 @@ pub mod tasks {
     }
 
     /// The process-global task registry singleton.
-    static GLOBAL_REGISTRY: Lazy<TaskRegistry> = Lazy::new(TaskRegistry::new);
+    static GLOBAL_REGISTRY: std::sync::LazyLock<TaskRegistry> = std::sync::LazyLock::new(TaskRegistry::new);
 
     /// Return a reference to the process-global `TaskRegistry`.
+    #[must_use]
     pub fn global_registry() -> &'static TaskRegistry {
         &GLOBAL_REGISTRY
     }
@@ -3768,7 +3794,7 @@ mod tests {
     fn make_req(tool_name: &str, is_read_only: bool) -> crate::permissions::PermissionRequest {
         crate::permissions::PermissionRequest {
             tool_name: tool_name.to_string(),
-            description: format!("{} operation", tool_name),
+            description: format!("{tool_name} operation"),
             details: None,
             is_read_only,
             context_description: None,

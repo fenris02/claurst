@@ -28,12 +28,12 @@ pub async fn check_for_updates() -> Option<UpdateInfo> {
     let current = env!("CARGO_PKG_VERSION").to_string();
 
     // --- 24-hour rate-limit cache -------------------------------------------
-    if let Some(cache_path) = update_cache_path() {
-        if cache_path.exists() {
-            if let Ok(metadata) = std::fs::metadata(&cache_path) {
-                if let Ok(modified) = metadata.modified() {
-                    if let Ok(elapsed) = modified.elapsed() {
-                        if elapsed < Duration::from_secs(CHECK_INTERVAL_HOURS * 3600) {
+    if let Some(cache_path) = update_cache_path()
+        && cache_path.exists()
+            && let Ok(metadata) = std::fs::metadata(&cache_path)
+                && let Ok(modified) = metadata.modified()
+                    && let Ok(elapsed) = modified.elapsed()
+                        && elapsed < Duration::from_secs(CHECK_INTERVAL_HOURS * 3600) {
                             // Cache is still fresh — use the stored version.
                             if let Ok(cached) = std::fs::read_to_string(&cache_path) {
                                 let cached = cached.trim().to_string();
@@ -46,8 +46,7 @@ pub async fn check_for_updates() -> Option<UpdateInfo> {
                                         current_version: current,
                                         latest_version: cached.clone(),
                                         release_url: format!(
-                                            "https://github.com/kuberwastaken/claurst/releases/tag/v{}",
-                                            cached
+                                            "https://github.com/kuberwastaken/claurst/releases/tag/v{cached}"
                                         ),
                                         has_update: true,
                                     });
@@ -55,16 +54,11 @@ pub async fn check_for_updates() -> Option<UpdateInfo> {
                                 return None;
                             }
                         }
-                    }
-                }
-            }
-        }
-    }
 
     // --- Network fetch -------------------------------------------------------
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
-        .user_agent(format!("Claurst/{}", current))
+        .user_agent(format!("Claurst/{current}"))
         .build()
         .ok()?;
 

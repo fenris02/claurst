@@ -25,7 +25,7 @@ use tracing::{debug, warn};
 // ---------------------------------------------------------------------------
 
 const SYNC_TIMEOUT_SECS: u64 = 10;
-#[allow(dead_code)]
+#[expect(dead_code)]
 const DEFAULT_MAX_RETRIES: u32 = 3;
 /// 500 KB per-file size limit (matches backend enforcement).
 const MAX_FILE_SIZE_BYTES: u64 = 500 * 1024;
@@ -40,11 +40,13 @@ pub const SYNC_KEY_USER_SETTINGS: &str = "~/.claurst/settings.json";
 pub const SYNC_KEY_USER_MEMORY: &str = "~/.claurst/AGENTS.md";
 
 /// Canonical sync key for per-project settings (keyed by git-remote hash).
+#[must_use]
 pub fn sync_key_project_settings(project_id: &str) -> String {
     format!("projects/{project_id}/.claurst/settings.local.json")
 }
 
 /// Canonical sync key for per-project memory (keyed by git-remote hash).
+#[must_use]
 pub fn sync_key_project_memory(project_id: &str) -> String {
     format!("projects/{project_id}/AGENTS.local.md")
 }
@@ -59,25 +61,25 @@ struct UserSyncContent {
     entries: HashMap<String, String>,
 }
 
-/// Full GET /api/claude_code/user_settings response.
+/// Full GET /`api/claude_code/user_settings` response.
 #[derive(Debug, Deserialize)]
 struct UserSyncData {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     #[serde(rename = "userId")]
     user_id: Option<String>,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     version: Option<u64>,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     #[serde(rename = "lastModified")]
     last_modified: Option<String>,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     checksum: Option<String>,
     content: UserSyncContent,
 }
 
 /// PUT response (partial — only fields we care about).
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct UploadResponse {
     checksum: Option<String>,
     #[serde(rename = "lastModified")]
@@ -105,13 +107,14 @@ pub struct SyncedData {
 pub struct SettingsSyncManager {
     /// OAuth bearer token for authentication.
     pub oauth_token: String,
-    /// Base API URL (default: https://api.anthropic.com).
+    /// Base API URL (default: <https://api.anthropic.com>).
     pub base_url: String,
     http: reqwest::Client,
 }
 
 impl SettingsSyncManager {
     /// Create a new manager.
+    #[must_use]
     pub fn new(oauth_token: String, base_url: String) -> Self {
         let http = reqwest::Client::builder()
             .timeout(Duration::from_secs(SYNC_TIMEOUT_SECS))
@@ -128,7 +131,7 @@ impl SettingsSyncManager {
         format!("{}/api/claude_code/user_settings", self.base_url)
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn auth_headers(&self) -> [(&'static str, String); 2] {
         [
             ("Authorization", format!("Bearer {}", self.oauth_token)),
@@ -159,7 +162,7 @@ impl SettingsSyncManager {
             return Ok(None);
         }
         if status != 200 {
-            anyhow::bail!("Settings sync download: unexpected status {}", status);
+            anyhow::bail!("Settings sync download: unexpected status {status}");
         }
 
         let data: UserSyncData = resp.json().await?;
@@ -167,7 +170,7 @@ impl SettingsSyncManager {
     }
 
     /// Download with exponential-backoff retry.
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     async fn download_with_retry(&self) -> Result<Option<SyncedData>> {
         let mut last_err = anyhow::anyhow!("No attempts made");
         for attempt in 1..=(DEFAULT_MAX_RETRIES + 1) {
@@ -241,7 +244,7 @@ impl SettingsSyncManager {
                         result.applied_count += 1;
                     }
                     Err(e) => {
-                        warn!("Settings sync: failed to write project settings: {}", e)
+                        warn!("Settings sync: failed to write project settings: {}", e);
                     }
                 }
             }
@@ -257,7 +260,7 @@ impl SettingsSyncManager {
                         result.applied_count += 1;
                     }
                     Err(e) => {
-                        warn!("Settings sync: failed to write project memory: {}", e)
+                        warn!("Settings sync: failed to write project memory: {}", e);
                     }
                 }
             }
@@ -283,7 +286,7 @@ impl SettingsSyncManager {
         // Only send keys that have changed
         let changed: HashMap<String, String> = local_entries
             .into_iter()
-            .filter(|(k, v)| remote_entries.get(k).map(|rv| rv != v).unwrap_or(true))
+            .filter(|(k, v)| remote_entries.get(k) != Some(v))
             .collect();
 
         if changed.is_empty() {
@@ -312,7 +315,7 @@ impl SettingsSyncManager {
 
         let status = resp.status().as_u16();
         if !(200..300).contains(&status) {
-            anyhow::bail!("Settings sync upload: unexpected status {}", status);
+            anyhow::bail!("Settings sync upload: unexpected status {status}");
         }
         Ok(())
     }
@@ -435,13 +438,11 @@ async fn write_file_for_sync(path: &PathBuf, content: &str) -> Result<()> {
 
 /// Return the ~/.claurst directory.
 fn claude_config_dir() -> PathBuf {
-    dirs::home_dir()
-        .map(|h| h.join(".claurst"))
-        .unwrap_or_else(|| PathBuf::from(".claurst"))
+    dirs::home_dir().map_or_else(|| PathBuf::from(".claurst"), |h| h.join(".claurst"))
 }
 
 /// Exponential backoff delay for retry attempt `n` (1-indexed), capped at 30 s.
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn retry_delay(attempt: u32) -> Duration {
     let shift = attempt.saturating_sub(1).min(30);
     let secs: u64 = 1u64.checked_shl(shift).unwrap_or(u64::MAX).min(30);

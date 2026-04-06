@@ -108,13 +108,13 @@ impl SqliteSessionStore {
             })
         })?;
 
-        Ok(rows.filter_map(|r| r.ok()).collect())
+        Ok(rows.filter_map(std::result::Result::ok).collect())
     }
 
     /// Full-text search across session titles and message content.
     /// Returns up to 50 matching sessions ordered by recency.
     pub fn search_sessions(&self, query: &str) -> anyhow::Result<Vec<SessionSummary>> {
-        let like = format!("%{}%", query);
+        let like = format!("%{query}%");
         let mut stmt = self.conn.prepare(
             "SELECT DISTINCT s.id, s.title, s.model,
                     s.created_at, s.updated_at, s.message_count
@@ -137,7 +137,7 @@ impl SqliteSessionStore {
             })
         })?;
 
-        Ok(rows.filter_map(|r| r.ok()).collect())
+        Ok(rows.filter_map(std::result::Result::ok).collect())
     }
 
     /// Delete a session and all of its messages.

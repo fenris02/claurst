@@ -33,7 +33,7 @@ pub const MAX_TRANSCRIPT_BYTES: u64 = 50 * 1024 * 1024; // 50 MB
 
 /// A single line in a `.jsonl` transcript file.
 ///
-/// Variants are serialised with a `"type"` field that matches the TypeScript
+/// Variants are serialised with a `"type"` field that matches the `TypeScript`
 /// `Entry` union.  Only variants the Rust port actively uses are named; every
 /// other entry type is preserved as a raw `serde_json::Value` via `Other`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,6 +70,7 @@ pub enum TranscriptEntry {
 impl TranscriptEntry {
     /// Returns the `uuid` of the underlying message, if this is a transcript
     /// message type (user / assistant / attachment / system).
+    #[must_use]
     pub fn uuid(&self) -> Option<&str> {
         match self {
             Self::User(m) | Self::Assistant(m) | Self::Attachment(m) | Self::System(m) => {
@@ -81,6 +82,7 @@ impl TranscriptEntry {
 
     /// Return true if this entry is a user or assistant message
     /// (i.e. contributes to the conversation chain).
+    #[must_use]
     pub fn is_chain_participant(&self) -> bool {
         matches!(self, Self::User(_) | Self::Assistant(_))
     }
@@ -209,6 +211,7 @@ pub struct SessionSummary {
 // ---------------------------------------------------------------------------
 
 /// Returns the base projects directory: `~/.claurst/projects/`.
+#[must_use]
 pub fn projects_dir() -> PathBuf {
     crate::config::Settings::config_dir().join("projects")
 }
@@ -218,14 +221,16 @@ pub fn projects_dir() -> PathBuf {
 /// The project root path is encoded using **URL-safe base64 without padding**
 /// to produce a stable, platform-safe directory name that is fully reversible
 /// (unlike the TS `sanitizePath` which just replaces chars with hyphens).
+#[must_use]
 pub fn transcript_dir(project_root: &Path) -> PathBuf {
     let encoded = URL_SAFE_NO_PAD.encode(project_root.to_string_lossy().as_bytes());
     projects_dir().join(encoded)
 }
 
 /// Returns the full path to a session's JSONL transcript file.
+#[must_use]
 pub fn transcript_path(project_root: &Path, session_id: &str) -> PathBuf {
-    transcript_dir(project_root).join(format!("{}.jsonl", session_id))
+    transcript_dir(project_root).join(format!("{session_id}.jsonl"))
 }
 
 // ---------------------------------------------------------------------------
@@ -238,14 +243,13 @@ pub fn transcript_path(project_root: &Path, session_id: &str) -> PathBuf {
 /// * Is a no-op (returns `Ok(())`) when the file already exceeds [`MAX_TRANSCRIPT_BYTES`] to avoid
 ///   unbounded growth.
 /// * Uses `OpenOptions::append(true)` which results in an atomic positional write on POSIX
-///   (O_APPEND) and a best-effort append on Windows.
+///   (`O_APPEND`) and a best-effort append on Windows.
 pub async fn write_transcript_entry(path: &Path, entry: &TranscriptEntry) -> crate::Result<()> {
     // Guard: do not grow files beyond the cap.
-    if let Ok(meta) = tokio::fs::metadata(path).await {
-        if meta.len() >= MAX_TRANSCRIPT_BYTES {
+    if let Ok(meta) = tokio::fs::metadata(path).await
+        && meta.len() >= MAX_TRANSCRIPT_BYTES {
             return Ok(());
         }
-    }
 
     // Serialise to a single compact JSON line terminated by '\n'.
     let mut line = serde_json::to_string(entry)?;
@@ -302,14 +306,11 @@ pub async fn load_transcript(path: &Path) -> crate::Result<Vec<TranscriptEntry>>
             continue;
         }
         // Cheap structural check before full parse.
-        if trimmed.contains("\"type\":\"tombstone\"") || trimmed.contains("\"type\": \"tombstone\"")
-        {
-            if let Ok(entry) = serde_json::from_str::<TranscriptEntry>(trimmed) {
-                if let TranscriptEntry::Tombstone(t) = entry {
+        if (trimmed.contains("\"type\":\"tombstone\"") || trimmed.contains("\"type\": \"tombstone\""))
+            && let Ok(entry) = serde_json::from_str::<TranscriptEntry>(trimmed)
+                && let TranscriptEntry::Tombstone(t) = entry {
                     tombstoned.insert(t.deleted_uuid);
                 }
-            }
-        }
     }
 
     // Second pass: collect valid non-tombstoned entries.
@@ -332,11 +333,10 @@ pub async fn load_transcript(path: &Path) -> crate::Result<Vec<TranscriptEntry>>
             _ => {}
         }
 
-        if let Some(uuid) = entry.uuid() {
-            if tombstoned.contains(uuid) {
+        if let Some(uuid) = entry.uuid()
+            && tombstoned.contains(uuid) {
                 continue;
             }
-        }
 
         entries.push(entry);
     }
@@ -442,10 +442,10 @@ async fn read_session_tail_metadata(path: &Path) -> (Option<String>, Option<Stri
 
     use tokio::io::{AsyncReadExt, AsyncSeekExt};
     let mut file = file;
-    if let Err(_) = file.seek(std::io::SeekFrom::Start(offset)).await {
+    if file.seek(std::io::SeekFrom::Start(offset)).await.is_err() {
         return (None, None);
     }
-    if let Err(_) = file.read_exact(&mut buf).await {
+    if file.read_exact(&mut buf).await.is_err() {
         return (None, None);
     }
 
@@ -463,24 +463,18 @@ async fn read_session_tail_metadata(path: &Path) -> (Option<String>, Option<Stri
         if last_prompt.is_none()
             && (trimmed.contains("\"type\":\"last-prompt\"")
                 || trimmed.contains("\"type\": \"last-prompt\""))
-        {
-            if let Ok(e) = serde_json::from_str::<TranscriptEntry>(trimmed) {
-                if let TranscriptEntry::LastPrompt(lp) = e {
+            && let Ok(e) = serde_json::from_str::<TranscriptEntry>(trimmed)
+                && let TranscriptEntry::LastPrompt(lp) = e {
                     last_prompt = Some(lp.last_prompt);
                 }
-            }
-        }
 
         if title.is_none()
             && (trimmed.contains("\"type\":\"custom-title\"")
                 || trimmed.contains("\"type\": \"custom-title\""))
-        {
-            if let Ok(e) = serde_json::from_str::<TranscriptEntry>(trimmed) {
-                if let TranscriptEntry::CustomTitle(ct) = e {
+            && let Ok(e) = serde_json::from_str::<TranscriptEntry>(trimmed)
+                && let TranscriptEntry::CustomTitle(ct) = e {
                     title = Some(ct.custom_title);
                 }
-            }
-        }
 
         if last_prompt.is_some() && title.is_some() {
             break;
@@ -497,12 +491,13 @@ async fn read_session_tail_metadata(path: &Path) -> (Option<String>, Option<Stri
 /// Build a `TranscriptEntry::User` from a bare `Message`.
 ///
 /// `parent_uuid` is the UUID of the preceding chain-participant entry.
+#[must_use]
 pub fn make_user_entry(
     message: Message, uuid: &str, parent_uuid: Option<&str>, session_id: &str, cwd: &str,
 ) -> TranscriptEntry {
     TranscriptEntry::User(TranscriptMessage {
         uuid: Some(uuid.to_string()),
-        parent_uuid: parent_uuid.map(|s| s.to_string()),
+        parent_uuid: parent_uuid.map(std::string::ToString::to_string),
         timestamp: chrono::Utc::now().to_rfc3339(),
         session_id: session_id.to_string(),
         cwd: cwd.to_string(),
@@ -516,12 +511,13 @@ pub fn make_user_entry(
 }
 
 /// Build a `TranscriptEntry::Assistant` from a bare `Message`.
+#[must_use]
 pub fn make_assistant_entry(
     message: Message, uuid: &str, parent_uuid: Option<&str>, session_id: &str, cwd: &str,
 ) -> TranscriptEntry {
     TranscriptEntry::Assistant(TranscriptMessage {
         uuid: Some(uuid.to_string()),
-        parent_uuid: parent_uuid.map(|s| s.to_string()),
+        parent_uuid: parent_uuid.map(std::string::ToString::to_string),
         timestamp: chrono::Utc::now().to_rfc3339(),
         session_id: session_id.to_string(),
         cwd: cwd.to_string(),
@@ -540,6 +536,7 @@ pub fn make_assistant_entry(
 /// (summary, custom-title, etc.) are discarded.  The order matches the on-disk
 /// parentUuid chain: messages are returned in the order they appear in the
 /// file, which is append-order and therefore chronological for the main chain.
+#[must_use]
 pub fn messages_from_transcript(entries: &[TranscriptEntry]) -> Vec<Message> {
     entries
         .iter()
@@ -615,7 +612,7 @@ mod tests {
         tokio::fs::create_dir_all(&tdir).await.unwrap();
 
         for id in ["aaaa", "bbbb"] {
-            let p = tdir.join(format!("{}.jsonl", id));
+            let p = tdir.join(format!("{id}.jsonl"));
             let msg = make_msg(Role::User);
             let uuid_val = uuid::Uuid::new_v4().to_string();
             let entry = make_user_entry(msg, &uuid_val, None, id, "/proj");

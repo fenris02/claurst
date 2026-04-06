@@ -24,7 +24,7 @@ pub struct CloudSession {
     pub message_count: u64,
 }
 
-/// Events emitted by the remote session WebSocket.
+/// Events emitted by the remote session `WebSocket`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SessionEvent {
@@ -41,11 +41,12 @@ pub enum SessionEvent {
 pub struct RemoteSessionManager {
     base_url: String,
     access_token: String,
-    /// Channel to emit SessionEvents to the TUI.
+    /// Channel to emit `SessionEvents` to the TUI.
     _event_tx: mpsc::Sender<SessionEvent>,
 }
 
 impl RemoteSessionManager {
+    #[must_use]
     pub fn new(access_token: String) -> (Self, mpsc::Receiver<SessionEvent>) {
         let (tx, rx) = mpsc::channel(64);
         (
@@ -102,7 +103,8 @@ impl RemoteSessionManager {
     }
 
     /// Start background sync loop: pushes local transcript to cloud every 30s.
-    /// Returns a JoinHandle; caller should keep it alive.
+    /// Returns a `JoinHandle`; caller should keep it alive.
+    #[must_use]
     pub fn start_background_sync(
         self: std::sync::Arc<Self>, session_id: String, transcript_path: std::path::PathBuf,
     ) -> tokio::task::JoinHandle<()> {
@@ -133,13 +135,14 @@ impl RemoteSessionManager {
 // Sessions WebSocket
 // ---------------------------------------------------------------------------
 
-/// WebSocket client for real-time session events.
+/// `WebSocket` client for real-time session events.
 pub struct SessionsWebSocket {
     pub ws_url: String,
     pub access_token: String,
 }
 
 impl SessionsWebSocket {
+    #[must_use]
     pub fn new(access_token: String) -> Self {
         Self {
             ws_url: "wss://api.claude.ai/ws/sessions".to_string(),
@@ -147,7 +150,7 @@ impl SessionsWebSocket {
         }
     }
 
-    /// Connect to the sessions WebSocket, emit events, and reconnect on disconnect.
+    /// Connect to the sessions `WebSocket`, emit events, and reconnect on disconnect.
     /// Runs until the sender is dropped or the task is cancelled.
     pub async fn connect(&self, event_tx: mpsc::Sender<SessionEvent>) -> Result<(), String> {
         let mut backoff_secs: u64 = 1;

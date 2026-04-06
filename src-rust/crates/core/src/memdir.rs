@@ -1,7 +1,7 @@
 //! Memory directory (memdir) system.
 //!
 //! Provides persistent, file-based memory across sessions.  Mirrors the
-//! TypeScript modules under `src/memdir/`:
+//! `TypeScript` modules under `src/memdir/`:
 //!   - `memoryScan.ts`   → `scan_memory_dir`, `parse_frontmatter_quick`, `format_memory_manifest`
 //!   - `memoryAge.ts`    → `memory_age_days`, `memory_freshness_text`, `memory_freshness_note`
 //!   - `memdir.ts`       → `build_memory_prompt_content`, `load_memory_index`,
@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 // ---------------------------------------------------------------------------
 
 /// The four canonical memory types.
-/// Matches the TypeScript `MemoryType` union in `memoryTypes.ts`.
+/// Matches the `TypeScript` `MemoryType` union in `memoryTypes.ts`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MemoryType {
@@ -37,6 +37,7 @@ pub enum MemoryType {
 impl MemoryType {
     /// Parse a raw frontmatter value into a `MemoryType`.
     /// Returns `None` for missing or unrecognised values (legacy files degrade gracefully).
+    #[must_use]
     pub fn parse(raw: &str) -> Option<Self> {
         match raw.trim() {
             "user" => Some(Self::User),
@@ -48,6 +49,7 @@ impl MemoryType {
     }
 
     /// Display as a lowercase string.
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::User => "user",
@@ -105,6 +107,7 @@ const FRONTMATTER_MAX_LINES: usize = 30;
 /// This is a synchronous scan used during system-prompt assembly.
 /// Mirrors `scanMemoryFiles` in `memoryScan.ts` (async version; this is the
 /// sync equivalent used at prompt-build time).
+#[must_use]
 pub fn scan_memory_dir(dir: &Path) -> Vec<MemoryFileMeta> {
     let mut files: Vec<MemoryFileMeta> = Vec::new();
 
@@ -132,7 +135,7 @@ fn collect_md_files(base: &Path, current_dir: &Path, out: &mut Vec<MemoryFileMet
         let path = entry.path();
         if path.is_dir() {
             collect_md_files(base, &path, out);
-        } else if path.extension().map(|e| e == "md").unwrap_or(false) {
+        } else if path.extension().is_some_and(|e| e == "md") {
             let file_name = path
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
@@ -144,8 +147,7 @@ fn collect_md_files(base: &Path, current_dir: &Path, out: &mut Vec<MemoryFileMet
             let modified_secs = entry
                 .metadata()
                 .and_then(|m| m.modified())
-                .map(|t| t.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs())
-                .unwrap_or(0);
+                .map_or(0, |t| t.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs());
 
             let (name, description, memory_type) =
                 if let Ok(content) = std::fs::read_to_string(&path) {
@@ -156,9 +158,7 @@ fn collect_md_files(base: &Path, current_dir: &Path, out: &mut Vec<MemoryFileMet
 
             // Relative path from the memory dir root.
             let relative = path
-                .strip_prefix(base)
-                .map(|p| p.to_string_lossy().into_owned())
-                .unwrap_or_else(|_| file_name.clone());
+                .strip_prefix(base).map_or_else(|_| file_name.clone(), |p| p.to_string_lossy().into_owned());
 
             out.push(MemoryFileMeta {
                 filename: relative,
@@ -176,6 +176,7 @@ fn collect_md_files(base: &Path, current_dir: &Path, out: &mut Vec<MemoryFileMet
 /// a full YAML parser.  Returns `(name, description, memory_type)`.
 ///
 /// Mirrors `parseFrontmatter` usage in `memoryScan.ts`.
+#[must_use]
 pub fn parse_frontmatter_quick(
     content: &str,
 ) -> (Option<String>, Option<String>, Option<MemoryType>) {
@@ -186,7 +187,7 @@ pub fn parse_frontmatter_quick(
     let lines: Vec<&str> = content.lines().take(FRONTMATTER_MAX_LINES).collect();
 
     // Frontmatter must start with `---`
-    if lines.first().map(|l| l.trim() != "---").unwrap_or(true) {
+    if lines.first().is_none_or(|l| l.trim() != "---") {
         return (name, description, memory_type);
     }
 
@@ -210,6 +211,7 @@ pub fn parse_frontmatter_quick(
 /// `[type] filename (iso-timestamp): description`.
 ///
 /// Mirrors `formatMemoryManifest` in `memoryScan.ts`.
+#[must_use]
 pub fn format_memory_manifest(memories: &[MemoryFileMeta]) -> String {
     memories
         .iter()
@@ -244,7 +246,7 @@ fn format_unix_secs_iso(secs: u64) -> String {
     let hh = (secs % 86400) / 3600;
     let mm = (secs % 3600) / 60;
     let ss = secs % 60;
-    format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z", y, m, d, hh, mm, ss)
+    format!("{y:04}-{m:02}-{d:02}T{hh:02}:{mm:02}:{ss:02}Z")
 }
 
 /// Convert a Julian Day Number to (year, month, day).
@@ -269,6 +271,7 @@ fn jdn_to_ymd(jdn: u32) -> (u32, u32, u32) {
 /// future mtimes (clock skew).
 ///
 /// Mirrors `memoryAgeDays` in `memoryAge.ts`.
+#[must_use]
 pub fn memory_age_days(modified_secs: u64) -> u64 {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -281,12 +284,13 @@ pub fn memory_age_days(modified_secs: u64) -> u64 {
 /// ISO timestamp does not trigger staleness reasoning the way "47 days ago" does.
 ///
 /// Mirrors `memoryAge` in `memoryAge.ts`.
+#[must_use]
 pub fn memory_age(modified_secs: u64) -> String {
     let d = memory_age_days(modified_secs);
     match d {
         0 => "today".to_string(),
         1 => "yesterday".to_string(),
-        n => format!("{} days ago", n),
+        n => format!("{n} days ago"),
     }
 }
 
@@ -294,17 +298,17 @@ pub fn memory_age(modified_secs: u64) -> String {
 /// Returns an empty string for fresh memories (today / yesterday).
 ///
 /// Mirrors `memoryFreshnessText` in `memoryAge.ts`.
+#[must_use]
 pub fn memory_freshness_text(modified_secs: u64) -> String {
     let d = memory_age_days(modified_secs);
     if d <= 1 {
         return String::new();
     }
     format!(
-        "This memory is {} days old. \
+        "This memory is {d} days old. \
         Memories are point-in-time observations, not live state — \
         claims about code behavior or file:line citations may be outdated. \
-        Verify against current code before asserting as fact.",
-        d
+        Verify against current code before asserting as fact."
     )
 }
 
@@ -312,12 +316,13 @@ pub fn memory_freshness_text(modified_secs: u64) -> String {
 /// Returns an empty string for memories ≤ 1 day old.
 ///
 /// Mirrors `memoryFreshnessNote` in `memoryAge.ts`.
+#[must_use]
 pub fn memory_freshness_note(modified_secs: u64) -> String {
     let text = memory_freshness_text(modified_secs);
     if text.is_empty() {
         return String::new();
     }
-    format!("<system-reminder>{}</system-reminder>\n", text)
+    format!("<system-reminder>{text}</system-reminder>\n")
 }
 
 // ---------------------------------------------------------------------------
@@ -344,20 +349,17 @@ pub const MAX_ENTRYPOINT_BYTES: usize = 25_000;
 /// 3. `~/.claurst/projects/<sanitized-root>/memory/` (default).
 pub fn auto_memory_path(project_root: &Path) -> PathBuf {
     // 1. Cowork full-path override.
-    if let Ok(override_path) = std::env::var("CLAUDE_COWORK_MEMORY_PATH_OVERRIDE") {
-        if !override_path.is_empty() {
+    if let Ok(override_path) = std::env::var("CLAUDE_COWORK_MEMORY_PATH_OVERRIDE")
+        && !override_path.is_empty() {
             return PathBuf::from(override_path);
         }
-    }
 
     // 2. Determine the memory base directory.
-    let memory_base = std::env::var("CLAURST_REMOTE_MEMORY_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| {
+    let memory_base = std::env::var("CLAURST_REMOTE_MEMORY_DIR").map_or_else(|_| {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
                 .join(".claurst")
-        });
+        }, PathBuf::from);
 
     // 3. Sanitize the project root into a safe directory name.
     let sanitized = sanitize_path_component(&project_root.to_string_lossy());
@@ -367,6 +369,7 @@ pub fn auto_memory_path(project_root: &Path) -> PathBuf {
 
 /// Sanitize an arbitrary string into a directory-name-safe component.
 /// Matches `sanitizePath` used inside `getAutoMemPath` in `paths.ts`.
+#[must_use]
 pub fn sanitize_path_component(s: &str) -> String {
     s.chars()
         .map(|c| {
@@ -387,6 +390,7 @@ pub fn sanitize_path_component(s: &str) -> String {
 /// 3. Remote mode without `CLAURST_REMOTE_MEMORY_DIR` → OFF.
 /// 4. `settings_enabled` parameter (from settings.json `autoMemoryEnabled` field).
 /// 5. Default: enabled.
+#[must_use]
 pub fn is_auto_memory_enabled(settings_enabled: Option<bool>) -> bool {
     if let Ok(val) = std::env::var("CLAURST_DISABLE_AUTO_MEMORY") {
         // Truthy values (non-empty, non-"0", non-"false") disable memory.
@@ -427,6 +431,7 @@ pub struct EntrypointTruncation {
 /// `MAX_ENTRYPOINT_BYTES` bytes, appending a warning when either cap fires.
 ///
 /// Mirrors `truncateEntrypointContent` in `memdir.ts`.
+#[must_use]
 pub fn truncate_entrypoint_content(raw: &str) -> EntrypointTruncation {
     let trimmed = raw.trim();
     let content_lines: Vec<&str> = trimmed.lines().collect();
@@ -460,18 +465,16 @@ pub fn truncate_entrypoint_content(raw: &str) -> EntrypointTruncation {
     }
 
     let reason = match (was_line_truncated, was_byte_truncated) {
-        (true, false) => format!("{} lines (limit: {})", line_count, MAX_ENTRYPOINT_LINES),
+        (true, false) => format!("{line_count} lines (limit: {MAX_ENTRYPOINT_LINES})"),
         (false, true) => format!(
-            "{} bytes (limit: {}) — index entries are too long",
-            byte_count, MAX_ENTRYPOINT_BYTES
+            "{byte_count} bytes (limit: {MAX_ENTRYPOINT_BYTES}) — index entries are too long"
         ),
-        _ => format!("{} lines and {} bytes", line_count, byte_count),
+        _ => format!("{line_count} lines and {byte_count} bytes"),
     };
 
     truncated.push_str(&format!(
-        "\n\n> WARNING: {} is {}. Only part of it was loaded. \
-        Keep index entries to one line under ~200 chars; move detail into topic files.",
-        MEMORY_ENTRYPOINT, reason
+        "\n\n> WARNING: {MEMORY_ENTRYPOINT} is {reason}. Only part of it was loaded. \
+        Keep index entries to one line under ~200 chars; move detail into topic files."
     ));
 
     EntrypointTruncation {
@@ -487,6 +490,7 @@ pub fn truncate_entrypoint_content(raw: &str) -> EntrypointTruncation {
 /// Returns `None` when the file does not exist or is empty.
 ///
 /// Mirrors the entrypoint-reading path in `buildMemoryPrompt` / `loadMemoryPrompt`.
+#[must_use]
 pub fn load_memory_index(memory_dir: &Path) -> Option<EntrypointTruncation> {
     let index_path = memory_dir.join(MEMORY_ENTRYPOINT);
     if !index_path.exists() {
@@ -508,6 +512,7 @@ pub fn load_memory_index(memory_dir: &Path) -> Option<EntrypointTruncation> {
 ///
 /// Always includes the `MEMORY.md` index when it exists.
 /// Called during `build_system_prompt` → `SystemPromptOptions::memory_content`.
+#[must_use]
 pub fn build_memory_prompt_content(memory_dir: &Path) -> String {
     let mut parts: Vec<String> = Vec::new();
 
@@ -540,9 +545,10 @@ pub fn ensure_memory_dir_exists(memory_dir: &Path) {
 /// Find and load the most relevant memory files for a query using a
 /// lightweight TF-IDF-style keyword score.
 ///
-/// The full Sonnet side-query (`findRelevantMemories` in TypeScript) lives
+/// The full Sonnet side-query (`findRelevantMemories` in `TypeScript`) lives
 /// in `cc-query`; this function provides a cheaper fallback for contexts
 /// where an API call is not available.
+#[must_use]
 pub fn find_relevant_memories_simple(
     memory_dir: &Path, query: &str, max_files: usize,
 ) -> Vec<MemoryFile> {
@@ -598,6 +604,7 @@ pub fn find_relevant_memories_simple(
 
 /// Return the team-memory sub-directory path.
 /// Mirrors `getTeamMemPath` in `teamMemPaths.ts`.
+#[must_use]
 pub fn team_memory_path(auto_memory_dir: &Path) -> PathBuf {
     auto_memory_dir.join("team")
 }
@@ -750,7 +757,7 @@ mod tests {
     #[test]
     fn test_truncate_line_limit() {
         let content = (0..=MAX_ENTRYPOINT_LINES)
-            .map(|i| format!("line {}", i))
+            .map(|i| format!("line {i}"))
             .collect::<Vec<_>>()
             .join("\n");
         let result = truncate_entrypoint_content(&content);

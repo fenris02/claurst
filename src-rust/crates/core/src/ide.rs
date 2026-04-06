@@ -17,6 +17,7 @@ pub enum IdeKind {
 }
 
 impl IdeKind {
+    #[must_use]
     pub fn display_name(&self) -> &str {
         match self {
             Self::VSCode => "VS Code",
@@ -31,6 +32,7 @@ impl IdeKind {
     }
 
     /// Install command for the Claurst extension (if known for this IDE).
+    #[must_use]
     pub fn extension_install_command(&self) -> Option<String> {
         match self {
             Self::VSCode => Some("code --install-extension claurst.claurst".to_string()),
@@ -48,10 +50,11 @@ impl IdeKind {
 /// Detect the currently running IDE from environment variables.
 ///
 /// Returns `Some(IdeKind)` when a known IDE is detected, `None` otherwise.
+#[must_use]
 pub fn detect_ide() -> Option<IdeKind> {
     // TERM_PROGRAM is set by VS Code's integrated terminal (and forks).
-    if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
-        if term_program.as_str() == "vscode" {
+    if let Ok(term_program) = std::env::var("TERM_PROGRAM")
+        && term_program.as_str() == "vscode" {
             // Distinguish VS Code forks by checking GIT_ASKPASS for IDE-specific paths.
             if let Ok(askpass) = std::env::var("GIT_ASKPASS") {
                 let lower = askpass.to_lowercase();
@@ -70,7 +73,6 @@ pub fn detect_ide() -> Option<IdeKind> {
             }
             return Some(IdeKind::VSCode);
         }
-    }
 
     // GIT_ASKPASS alone (without TERM_PROGRAM) can also identify the IDE.
     if let Ok(askpass) = std::env::var("GIT_ASKPASS") {

@@ -13,7 +13,6 @@
 
 use std::collections::HashMap;
 
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
@@ -34,7 +33,7 @@ pub struct Tip {
 // ---------------------------------------------------------------------------
 
 /// All built-in tips, drawn directly from `tipRegistry.ts`.
-static ALL_TIPS: Lazy<Vec<Tip>> = Lazy::new(|| {
+static ALL_TIPS: std::sync::LazyLock<Vec<Tip>> = std::sync::LazyLock::new(|| {
     vec![
         Tip {
             id: "new-user-warmup",
@@ -165,6 +164,7 @@ static ALL_TIPS: Lazy<Vec<Tip>> = Lazy::new(|| {
 });
 
 /// Return a reference to all registered tips.
+#[must_use]
 pub fn all_tips() -> &'static [Tip] {
     &ALL_TIPS
 }
@@ -197,6 +197,7 @@ impl TipHistory {
     /// Load history from `~/.claurst/tip_history.json`.
     /// Returns an empty `TipHistory` if the file does not exist or cannot be
     /// parsed.
+    #[must_use]
     pub fn load() -> Self {
         let path = match Self::history_path() {
             Some(p) => p,
@@ -228,6 +229,7 @@ impl TipHistory {
     ///
     /// If the tip has never been shown, returns `u32::MAX` so it is always
     /// considered eligible.
+    #[must_use]
     pub fn sessions_since_last_shown(&self, tip_id: &str) -> u32 {
         match self.tips.get(tip_id) {
             None => u32::MAX,
@@ -264,6 +266,7 @@ impl TipHistory {
     }
 
     /// Low-level accessor: return the `TipRecord` for a tip, if any.
+    #[must_use]
     pub fn get_record(&self, tip_id: &str) -> Option<&TipRecord> {
         self.tips.get(tip_id)
     }
@@ -280,6 +283,7 @@ impl TipHistory {
 ///
 /// This mirrors `tipScheduler.ts` which sorts by `sessionsSinceLastShown` in
 /// descending order and takes the first eligible result.
+#[must_use]
 pub fn select_tip(session_num: u64) -> Option<&'static Tip> {
     let history = TipHistory::load();
 

@@ -1,4 +1,4 @@
-//! Token budget utilities — mirrors src/utils/context/token_budget.ts
+//! Token budget utilities — mirrors `src/utils/context/token_budget.ts`
 //!
 //! Provides helpers for tracking token usage, computing warning thresholds,
 //! and building thinking budget configs for extended thinking.
@@ -33,6 +33,7 @@ pub struct TokenBudget {
 
 impl TokenBudget {
     /// Construct from used/total pair.
+    #[must_use]
     pub fn new(tokens_used: u64, context_window: u64) -> Self {
         let remaining = context_window.saturating_sub(tokens_used);
         let fraction = if context_window == 0 {
@@ -57,16 +58,19 @@ impl TokenBudget {
     }
 
     /// True if we should trigger reactive compact (≥ 90% used).
+    #[must_use]
     pub fn should_compact(&self) -> bool {
         self.fill_fraction >= 0.90
     }
 
     /// True if we should trigger context collapse (≥ 97% used).
+    #[must_use]
     pub fn should_collapse(&self) -> bool {
         self.fill_fraction >= 0.97
     }
 
     /// Format as a human-readable string: "42K / 200K (21%)".
+    #[must_use]
     pub fn display(&self) -> String {
         format!(
             "{} / {} ({:.0}%)",
@@ -78,6 +82,7 @@ impl TokenBudget {
 }
 
 /// Format a token count as a compact string: 1234 → "1.2K", 1234567 → "1.2M".
+#[must_use]
 pub fn format_token_count(count: u64) -> String {
     if count >= 1_000_000 {
         format!("{:.1}M", count as f64 / 1_000_000.0)
@@ -90,6 +95,7 @@ pub fn format_token_count(count: u64) -> String {
 
 /// Context window sizes for known models.
 /// Returns None if the model is unknown (caller should use a safe default).
+#[must_use]
 pub fn context_window_for_model(model: &str) -> Option<u64> {
     let model_lower = model.to_lowercase();
     // claude-4 family

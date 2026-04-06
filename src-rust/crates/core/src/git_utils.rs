@@ -11,6 +11,7 @@ use std::{
 // ---------------------------------------------------------------------------
 
 /// Walk up the directory tree to find the nearest `.git` directory.
+#[must_use]
 pub fn get_repo_root(start: &Path) -> Option<PathBuf> {
     let mut current = start.to_path_buf();
     loop {
@@ -42,6 +43,7 @@ fn git_output(repo_root: &Path, args: &[&str]) -> String {
 // ---------------------------------------------------------------------------
 
 /// Return the current branch name (or "HEAD" if detached).
+#[must_use]
 pub fn get_current_branch(repo_root: &Path) -> String {
     let branch = git_output(repo_root, &["rev-parse", "--abbrev-ref", "HEAD"]);
     if branch.is_empty() {
@@ -52,6 +54,7 @@ pub fn get_current_branch(repo_root: &Path) -> String {
 }
 
 /// Return list of files modified (staged or unstaged).
+#[must_use]
 pub fn list_modified_files(repo_root: &Path) -> Vec<PathBuf> {
     let output = git_output(repo_root, &["diff", "--name-only", "HEAD"]);
     if output.is_empty() {
@@ -65,16 +68,19 @@ pub fn list_modified_files(repo_root: &Path) -> Vec<PathBuf> {
 // ---------------------------------------------------------------------------
 
 /// Return the staged diff (index vs HEAD).
+#[must_use]
 pub fn get_staged_diff(repo_root: &Path) -> String {
     git_output(repo_root, &["diff", "--cached"])
 }
 
 /// Return the unstaged diff (working tree vs index).
+#[must_use]
 pub fn get_unstaged_diff(repo_root: &Path) -> String {
     git_output(repo_root, &["diff"])
 }
 
 /// Return the diff for a specific file since a given commit (or HEAD).
+#[must_use]
 pub fn get_file_diff(repo_root: &Path, path: &Path, since_commit: Option<&str>) -> String {
     let commit = since_commit.unwrap_or("HEAD");
     let path_str = path.to_string_lossy();
@@ -96,6 +102,7 @@ pub struct CommitInfo {
 }
 
 /// Return the last `n` commits in the repository.
+#[must_use]
 pub fn get_commit_history(repo_root: &Path, n: usize) -> Vec<CommitInfo> {
     let format = "%H%x1f%h%x1f%an%x1f%ad%x1f%s%x1e";
     let n_str = n.to_string();
@@ -103,8 +110,8 @@ pub fn get_commit_history(repo_root: &Path, n: usize) -> Vec<CommitInfo> {
         repo_root,
         &[
             "log",
-            &format!("-{}", n_str),
-            &format!("--format={}", format),
+            &format!("-{n_str}"),
+            &format!("--format={format}"),
             "--date=short",
         ],
     );
@@ -134,23 +141,23 @@ pub fn get_commit_history(repo_root: &Path, n: usize) -> Vec<CommitInfo> {
 // ---------------------------------------------------------------------------
 
 /// Create and switch to a new branch.
+#[must_use]
 pub fn create_branch(repo_root: &Path, name: &str) -> bool {
     Command::new("git")
         .current_dir(repo_root)
         .args(["checkout", "-b", name])
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
 }
 
 /// Switch to an existing branch.
+#[must_use]
 pub fn switch_branch(repo_root: &Path, name: &str) -> bool {
     Command::new("git")
         .current_dir(repo_root)
         .args(["checkout", name])
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
 }
 
 // ---------------------------------------------------------------------------
@@ -158,29 +165,29 @@ pub fn switch_branch(repo_root: &Path, name: &str) -> bool {
 // ---------------------------------------------------------------------------
 
 /// Stash uncommitted changes with an optional message.
+#[must_use]
 pub fn stash(repo_root: &Path, message: Option<&str>) -> bool {
     let mut args = vec!["stash", "push"];
     let msg_flag;
     if let Some(m) = message {
-        msg_flag = format!("-m {}", m);
+        msg_flag = format!("-m {m}");
         args.push(&msg_flag);
     }
     Command::new("git")
         .current_dir(repo_root)
         .args(&args)
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
 }
 
 /// Pop the top stash entry.
+#[must_use]
 pub fn stash_pop(repo_root: &Path) -> bool {
     Command::new("git")
         .current_dir(repo_root)
         .args(["stash", "pop"])
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
 }
 
 // ---------------------------------------------------------------------------
@@ -188,14 +195,14 @@ pub fn stash_pop(repo_root: &Path) -> bool {
 // ---------------------------------------------------------------------------
 
 /// Returns `true` if the given path is git-ignored.
+#[must_use]
 pub fn is_ignored(repo_root: &Path, path: &Path) -> bool {
     let path_str = path.to_string_lossy();
     Command::new("git")
         .current_dir(repo_root)
         .args(["check-ignore", "-q", &path_str])
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
 }
 
 #[cfg(test)]

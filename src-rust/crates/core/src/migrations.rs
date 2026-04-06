@@ -1,7 +1,7 @@
 //! Settings migration framework
 //! Runs on startup to upgrade settings.json from older versions.
 //!
-//! Migrations are derived from the TypeScript originals:
+//! Migrations are derived from the `TypeScript` originals:
 //!   - src/migrations/migrateFennecToOpus.ts
 //!   - src/migrations/migrateLegacyOpusToCurrent.ts
 //!   - src/migrations/migrateSonnet45ToSonnet46.ts
@@ -159,12 +159,11 @@ fn migrate_sonnet_45_to_sonnet_46(settings: &mut Value) -> bool {
 fn rename_model(settings: &mut Value, from: &str, to: &str) -> bool {
     let mut changed = false;
     for key in &["model", "defaultModel", "mainLoopModel"] {
-        if let Some(val) = settings.get_mut(*key) {
-            if val.as_str() == Some(from) {
+        if let Some(val) = settings.get_mut(*key)
+            && val.as_str() == Some(from) {
                 *val = Value::String(to.to_string());
                 changed = true;
             }
-        }
     }
     changed
 }
@@ -246,30 +245,28 @@ fn migrate_auto_updates(settings: &mut Value) -> bool {
 
 /// Clear an old sentinel value for the auto-mode opt-in flag.
 fn reset_auto_mode_opt_in(settings: &mut Value) -> bool {
-    if let Some(val) = settings.get("autoModeOptIn") {
-        if val.as_str() == Some("default_offer_2024") {
+    if let Some(val) = settings.get("autoModeOptIn")
+        && val.as_str() == Some("default_offer_2024") {
             settings["autoModeOptIn"] = Value::Null;
             return true;
         }
-    }
     false
 }
 
 /// Reset users who were auto-defaulted to Opus back to Sonnet 4.6.
 /// Only resets when `modelSetByUser` is not explicitly `true`.
 fn reset_pro_to_opus_default(settings: &mut Value) -> bool {
-    if let Some(val) = settings.get("model") {
-        if val.as_str() == Some("claude-opus-4-5-20251001") {
+    if let Some(val) = settings.get("model")
+        && val.as_str() == Some("claude-opus-4-5-20251001") {
             let set_by_user = settings
                 .get("modelSetByUser")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
             if !set_by_user {
                 settings["model"] = Value::String("claude-sonnet-4-6".to_string());
                 return true;
             }
         }
-    }
     false
 }
 

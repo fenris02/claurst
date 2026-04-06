@@ -85,7 +85,7 @@ pub async fn poll_for_token(
                     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                     continue;
                 }
-                _ => return Err(format!("Auth error: {}", error)),
+                _ => return Err(format!("Auth error: {error}")),
             }
         }
     }

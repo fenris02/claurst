@@ -1,4 +1,4 @@
-//! Session Tracing — OpenTelemetry span stubs.
+//! Session Tracing — `OpenTelemetry` span stubs.
 //!
 //! Telemetry spans are no-ops: all span operations compile unchanged but
 //! discard all tracing data.
@@ -11,6 +11,7 @@ pub struct NoopSpan;
 
 impl NoopSpan {
     /// Create a new no-op span.
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -43,6 +44,7 @@ impl Default for NoopSpan {
 
 /// Start an interaction span (root span for a user request).
 /// Returns a no-op span; data is discarded.
+#[must_use]
 pub fn start_interaction_span(_request_id: &str) -> Arc<NoopSpan> {
     Arc::new(NoopSpan::new())
 }
@@ -53,6 +55,7 @@ pub fn end_interaction_span(_span: Arc<NoopSpan>) {}
 /// Start an LLM request span (traces API calls).
 /// Normally tracks TTFT, token counts, model, fast-mode status.
 /// In free builds, this is a no-op.
+#[must_use]
 pub fn start_llm_request_span(_model: &str, _max_tokens: u32) -> Arc<NoopSpan> {
     Arc::new(NoopSpan::new())
 }
@@ -61,6 +64,7 @@ pub fn start_llm_request_span(_model: &str, _max_tokens: u32) -> Arc<NoopSpan> {
 pub fn end_llm_request_span(_span: Arc<NoopSpan>, _input_tokens: u32, _output_tokens: u32) {}
 
 /// Start a tool execution span.
+#[must_use]
 pub fn start_tool_span(_tool_name: &str) -> Arc<NoopSpan> {
     Arc::new(NoopSpan::new())
 }
@@ -69,6 +73,7 @@ pub fn start_tool_span(_tool_name: &str) -> Arc<NoopSpan> {
 pub fn end_tool_span(_span: Arc<NoopSpan>, _success: bool, _error: Option<&str>) {}
 
 /// Start a permission dialog span.
+#[must_use]
 pub fn start_permission_span(_tool_name: &str) -> Arc<NoopSpan> {
     Arc::new(NoopSpan::new())
 }
@@ -77,6 +82,7 @@ pub fn start_permission_span(_tool_name: &str) -> Arc<NoopSpan> {
 pub fn end_permission_span(_span: Arc<NoopSpan>) {}
 
 /// Start a hook execution span.
+#[must_use]
 pub fn start_hook_span(_hook_name: &str) -> Arc<NoopSpan> {
     Arc::new(NoopSpan::new())
 }
@@ -96,6 +102,7 @@ where
 }
 
 /// Check if enhanced telemetry is enabled (always false).
+#[must_use]
 pub fn is_enhanced_telemetry_enabled() -> bool {
     false
 }

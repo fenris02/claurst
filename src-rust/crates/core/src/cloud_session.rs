@@ -33,7 +33,7 @@ pub struct CloudSessionDetail {
 /// A message in the cloud API format.
 ///
 /// `content` is a JSON array of Anthropic API content-block objects so that
-/// structured blocks (tool_use, tool_result, image, …) survive a round-trip
+/// structured blocks (`tool_use`, `tool_result`, image, …) survive a round-trip
 /// through the cloud without being collapsed to plain text.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudMessage {
@@ -63,6 +63,7 @@ fn content_to_blocks(content: &MessageContent) -> Vec<ContentBlock> {
 ///
 /// Every `ContentBlock` is serialised to its Anthropic API JSON
 /// representation; no information is discarded.
+#[must_use]
 pub fn message_to_cloud(msg: &Message, session_id: &str, msg_id: &str, ts: u64) -> CloudMessage {
     let role = match msg.role {
         Role::User => "user".to_string(),
@@ -71,7 +72,7 @@ pub fn message_to_cloud(msg: &Message, session_id: &str, msg_id: &str, ts: u64) 
 
     let content: Vec<Value> = content_to_blocks(&msg.content)
         .into_iter()
-        .map(|block| serde_json::to_value(&block).unwrap_or_else(|_| Value::Null))
+        .map(|block| serde_json::to_value(&block).unwrap_or(Value::Null))
         .collect();
 
     CloudMessage {
@@ -88,6 +89,7 @@ pub fn message_to_cloud(msg: &Message, session_id: &str, msg_id: &str, ts: u64) 
 /// Each element of `content` is deserialised as a `ContentBlock`.  Elements
 /// that cannot be parsed are silently skipped so that unknown future block
 /// types do not crash older clients.
+#[must_use]
 pub fn cloud_to_message(cloud: &CloudMessage) -> Message {
     let role = if cloud.role == "assistant" {
         Role::Assistant
@@ -132,6 +134,7 @@ pub struct CloudSessionClient {
 }
 
 impl CloudSessionClient {
+    #[must_use]
     pub fn new(access_token: String) -> Self {
         Self {
             base_url: "https://api.claude.ai".to_string(),

@@ -29,6 +29,7 @@ pub struct AuthStore {
 
 impl AuthStore {
     /// Path to the auth store file.
+    #[must_use]
     pub fn path() -> PathBuf {
         let dir = dirs::home_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -37,6 +38,7 @@ impl AuthStore {
     }
 
     /// Load the store from disk (returns default if missing or invalid).
+    #[must_use]
     pub fn load() -> Self {
         let path = Self::path();
         if path.exists() {
@@ -67,6 +69,7 @@ impl AuthStore {
     }
 
     /// Get the stored credential for a provider.
+    #[must_use]
     pub fn get(&self, provider_id: &str) -> Option<&StoredCredential> {
         self.credentials.get(provider_id)
     }
@@ -79,15 +82,15 @@ impl AuthStore {
 
     /// Get the API key for a provider, checking stored credentials first then
     /// falling back to the relevant environment variable.
+    #[must_use]
     pub fn api_key_for(&self, provider_id: &str) -> Option<String> {
         // Check stored credentials first
         if let Some(stored) = self.get(provider_id) {
             match stored {
-                StoredCredential::ApiKey { key } => {
-                    if !key.is_empty() {
+                StoredCredential::ApiKey { key }
+                    if !key.is_empty() => {
                         return Some(key.clone());
                     }
-                }
                 StoredCredential::OAuthToken {
                     access, refresh, ..
                 } if provider_id == "github-copilot" => {

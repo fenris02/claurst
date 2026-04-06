@@ -73,10 +73,10 @@ fn is_pipe_to_shell(cmd: &str) -> bool {
         for shell in &shells {
             // Could be `bash`, `bash -s`, `/bin/bash`, etc.
             if after_pipe == *shell
-                || after_pipe.starts_with(&format!("{} ", shell))
-                || after_pipe.starts_with(&format!("{}\t", shell))
-                || after_pipe.ends_with(&format!("/{}", shell))
-                || after_pipe.contains(&format!("/{} ", shell))
+                || after_pipe.starts_with(&format!("{shell} "))
+                || after_pipe.starts_with(&format!("{shell}\t"))
+                || after_pipe.ends_with(&format!("/{shell}"))
+                || after_pipe.contains(&format!("/{shell} "))
             {
                 return true;
             }
@@ -104,6 +104,7 @@ fn is_fork_bomb(cmd: &str) -> bool {
 ///
 /// The analysis is intentionally conservative: when in doubt, the higher risk
 /// level is returned.  The function does *not* execute any subprocess.
+#[must_use]
 pub fn classify_bash_command(command: &str) -> BashRiskLevel {
     let cmd = command.trim();
 
@@ -128,11 +129,10 @@ pub fn classify_bash_command(command: &str) -> BashRiskLevel {
     }
 
     // dd with an if= (disk image writing) — extremely destructive
-    if cmd.starts_with("dd ") || cmd == "dd" {
-        if cmd.contains("if=") {
+    if (cmd.starts_with("dd ") || cmd == "dd")
+        && cmd.contains("if=") {
             return BashRiskLevel::Critical;
         }
-    }
 
     // mkfs — format filesystem
     if cmd.starts_with("mkfs") || cmd.starts_with("mkfs.") {
@@ -145,8 +145,7 @@ pub fn classify_bash_command(command: &str) -> BashRiskLevel {
     }
 
     // Detect `rm` with `-rf` (or `-fr`) targeting root or very short paths
-    if cmd.starts_with("rm ") {
-        let args = &cmd[3..];
+    if let Some(args) = cmd.strip_prefix("rm ") {
         let has_r = has_flag(args, "-r")
             || has_flag(args, "-R")
             || has_flag(args, "-rf")
@@ -171,14 +170,12 @@ pub fn classify_bash_command(command: &str) -> BashRiskLevel {
     }
 
     // chmod 777 on / or critical paths
-    if cmd.starts_with("chmod ") {
-        let args = &cmd[6..];
-        if (args.contains("777") || args.contains("a+rwx"))
+    if let Some(args) = cmd.strip_prefix("chmod ")
+        && (args.contains("777") || args.contains("a+rwx"))
             && (args.contains(" /") || args.ends_with('/'))
         {
             return BashRiskLevel::Critical;
         }
-    }
 
     // ── Privilege escalation → High ────────────────────────────────────────
 
@@ -279,8 +276,7 @@ pub fn classify_bash_command(command: &str) -> BashRiskLevel {
     }
 
     // mv that targets sensitive paths
-    if cmd.starts_with("mv ") {
-        let args = &cmd[3..];
+    if let Some(args) = cmd.strip_prefix("mv ") {
         let sensitive = [" /etc/", " /bin/", " /usr/", " /lib/", " /boot/"];
         for s in &sensitive {
             if args.contains(s) {
@@ -527,6 +523,7 @@ pub fn classify_bash_command(command: &str) -> BashRiskLevel {
 /// - `BypassPermissions` → always approve.
 /// - `AcceptEdits` → approve `Safe` and `Low` only.
 /// - `Default` / `Plan` → never auto-approve bash commands.
+#[must_use]
 pub fn is_auto_approvable(command: &str, permission_mode: &PermissionMode) -> bool {
     match permission_mode {
         PermissionMode::BypassPermissions => true,

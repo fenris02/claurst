@@ -21,7 +21,7 @@ use std::collections::HashMap;
 /// `None` as the stored content means the file did not exist before the tool
 /// call (so reverting deletes it).
 pub struct SnapshotManager {
-    /// tool_use_id -> Vec<(absolute_file_path, content_before_write)>
+    /// `tool_use_id` -> Vec<(`absolute_file_path`, `content_before_write`)>
     ///
     /// A single tool call can write multiple files (e.g. `BatchEdit`), so the
     /// value is a `Vec`.  Files are stored in the order `snapshot_before` was
@@ -31,6 +31,7 @@ pub struct SnapshotManager {
 
 impl SnapshotManager {
     /// Create a new, empty `SnapshotManager`.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             snapshots: HashMap::new(),
@@ -67,6 +68,7 @@ impl SnapshotManager {
     ///
     /// Returns `(files_reverted, errors)`.  Errors are human-readable strings;
     /// the caller decides whether to surface them.
+    #[must_use]
     pub fn revert(&self, tool_use_id: &str) -> (Vec<String>, Vec<String>) {
         let mut reverted = Vec::new();
         let mut errors = Vec::new();
@@ -83,7 +85,7 @@ impl SnapshotManager {
                     // File did not exist before — delete it if it does now.
                     if std::path::Path::new(path).exists() {
                         if let Err(e) = std::fs::remove_file(path) {
-                            errors.push(format!("Failed to delete {}: {}", path, e));
+                            errors.push(format!("Failed to delete {path}: {e}"));
                         } else {
                             reverted.push(path.clone());
                         }
@@ -94,7 +96,7 @@ impl SnapshotManager {
                 }
                 Some(content) => {
                     if let Err(e) = std::fs::write(path, content) {
-                        errors.push(format!("Failed to restore {}: {}", path, e));
+                        errors.push(format!("Failed to restore {path}: {e}"));
                     } else {
                         reverted.push(path.clone());
                     }
@@ -108,6 +110,7 @@ impl SnapshotManager {
     /// Revert ALL file changes recorded in this session, across all tool calls.
     ///
     /// Returns `(files_reverted, errors)`.
+    #[must_use]
     pub fn revert_all(&self) -> (Vec<String>, Vec<String>) {
         let mut all_reverted = Vec::new();
         let mut all_errors = Vec::new();
@@ -123,8 +126,9 @@ impl SnapshotManager {
         (all_reverted, all_errors)
     }
 
-    /// List all tool_use_ids that made changes, paired with the file paths they
+    /// List all `tool_use_ids` that made changes, paired with the file paths they
     /// modified.  Ordered by insertion order where possible.
+    #[must_use]
     pub fn list_changes(&self) -> Vec<(String, Vec<String>)> {
         self.snapshots
             .iter()
@@ -171,7 +175,7 @@ mod tests {
 
         // Revert.
         let (reverted, errors) = mgr.revert("tool-1");
-        assert!(errors.is_empty(), "unexpected errors: {:?}", errors);
+        assert!(errors.is_empty(), "unexpected errors: {errors:?}");
         assert_eq!(reverted, vec![path_str.to_string()]);
         assert_eq!(fs::read_to_string(&path).unwrap(), "original content");
     }
@@ -192,7 +196,7 @@ mod tests {
 
         // Revert should delete it.
         let (reverted, errors) = mgr.revert("tool-2");
-        assert!(errors.is_empty(), "unexpected errors: {:?}", errors);
+        assert!(errors.is_empty(), "unexpected errors: {errors:?}");
         assert_eq!(reverted, vec![path_str.to_string()]);
         assert!(!path.exists(), "file should have been deleted");
     }

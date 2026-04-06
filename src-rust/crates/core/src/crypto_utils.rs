@@ -9,6 +9,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use sha2::{Digest, Sha256};
 
 /// Compute the SHA-256 hash of `data` and return it as a lowercase hex string.
+#[must_use]
 pub fn sha256_hex(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(data);
@@ -16,11 +17,13 @@ pub fn sha256_hex(data: &[u8]) -> String {
 }
 
 /// Compute the SHA-256 hash of a UTF-8 string.
+#[must_use]
 pub fn sha256_hex_str(s: &str) -> String {
     sha256_hex(s.as_bytes())
 }
 
 /// Encode bytes as base64url (no padding) — same as `btoa` + replace in TS.
+#[must_use]
 pub fn base64url_encode(data: &[u8]) -> String {
     URL_SAFE_NO_PAD.encode(data)
 }
@@ -31,11 +34,13 @@ pub fn base64url_decode(s: &str) -> Result<Vec<u8>, base64::DecodeError> {
 }
 
 /// Generate a random UUID v4 string ("xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx").
+#[must_use]
 pub fn generate_uuid() -> String {
     uuid::Uuid::new_v4().to_string()
 }
 
 /// Generate a cryptographically random work secret (32 bytes, base64url-encoded).
+#[must_use]
 pub fn generate_work_secret() -> String {
     let mut bytes = [0u8; 32];
     if getrandom::getrandom(&mut bytes).is_err() {
@@ -45,7 +50,7 @@ pub fn generate_work_secret() -> String {
             .unwrap_or_default()
             .subsec_nanos();
         let pid = std::process::id();
-        let seed = format!("{}-{}", ts, pid);
+        let seed = format!("{ts}-{pid}");
         let seed_bytes = seed.as_bytes();
         let copy_len = seed_bytes.len().min(32);
         bytes[..copy_len].copy_from_slice(&seed_bytes[..copy_len]);
@@ -55,11 +60,13 @@ pub fn generate_work_secret() -> String {
 
 /// Encode a project root path for use as a directory name (base64url of the path).
 /// Mirrors `src/utils/projectRoot.ts`'s `encodeProjectRoot()`.
+#[must_use]
 pub fn encode_project_root(project_root: &str) -> String {
     base64url_encode(project_root.as_bytes())
 }
 
 /// Decode a project root directory name back to a path.
+#[must_use]
 pub fn decode_project_root(encoded: &str) -> Option<String> {
     base64url_decode(encoded)
         .ok()

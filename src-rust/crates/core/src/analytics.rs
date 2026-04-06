@@ -5,14 +5,14 @@ use std::sync::{
     atomic::{AtomicU64, Ordering},
 };
 
-/// Session-level metrics counters (mirrors TypeScript bootstrap state).
+/// Session-level metrics counters (mirrors `TypeScript` bootstrap state).
 ///
 /// All counters use `AtomicU64` so they can be shared across threads without
-/// a mutex.  Cost is stored as integer millicents (cost_usd × 100_000) to
+/// a mutex.  Cost is stored as integer millicents (`cost_usd` × `100_000`) to
 /// avoid floating-point atomic arithmetic.
 #[derive(Debug, Default)]
 pub struct SessionMetrics {
-    /// Total cost in units of 1/100_000 USD (i.e. millicents).
+    /// Total cost in units of `1/100_000` USD (i.e. millicents).
     pub total_cost_usd_millicents: AtomicU64,
     pub total_input_tokens: AtomicU64,
     pub total_output_tokens: AtomicU64,
@@ -27,6 +27,7 @@ pub struct SessionMetrics {
 }
 
 impl SessionMetrics {
+    #[must_use]
     pub fn new() -> Arc<Self> {
         Arc::new(Self::default())
     }
@@ -43,9 +44,9 @@ impl SessionMetrics {
 
     pub fn add_tokens(&self, input: u32, output: u32) {
         self.total_input_tokens
-            .fetch_add(input as u64, Ordering::Relaxed);
+            .fetch_add(u64::from(input), Ordering::Relaxed);
         self.total_output_tokens
-            .fetch_add(output as u64, Ordering::Relaxed);
+            .fetch_add(u64::from(output), Ordering::Relaxed);
     }
 
     pub fn add_api_duration(&self, ms: u64) {
@@ -112,6 +113,7 @@ pub struct MetricsSummary {
 
 impl MetricsSummary {
     /// Format cost as a dollar amount string with appropriate precision.
+    #[must_use]
     pub fn format_cost(&self) -> String {
         if self.cost_usd < 0.01 {
             format!("${:.5}", self.cost_usd)
@@ -121,6 +123,7 @@ impl MetricsSummary {
     }
 
     /// Format total token count with K/M suffix.
+    #[must_use]
     pub fn format_tokens(&self) -> String {
         let total = self.input_tokens + self.output_tokens;
         if total >= 1_000_000 {
@@ -128,7 +131,7 @@ impl MetricsSummary {
         } else if total >= 1_000 {
             format!("{:.1}K tok", total as f64 / 1_000.0)
         } else {
-            format!("{} tok", total)
+            format!("{total} tok")
         }
     }
 }
@@ -169,6 +172,7 @@ pub struct Analytics {
 }
 
 impl Analytics {
+    #[must_use]
     pub fn new(session_id: String, enabled: bool) -> Self {
         Self {
             enabled,
@@ -194,20 +198,22 @@ pub fn log_event(_event_name: &str, _metadata: &[(&str, &str)]) {}
 
 pub async fn log_event_async(_event_name: &str, _metadata: &[(&str, &str)]) {}
 
-/// No-op. The Rust port does not initialize OpenTelemetry exporters.
+/// No-op. The Rust port does not initialize `OpenTelemetry` exporters.
 pub fn initialize_telemetry() {}
 
 /// No-op. Nothing to flush.
 pub async fn flush_telemetry() {}
 
 /// Always returns false. Enhanced telemetry is disabled.
+#[must_use]
 pub fn is_enhanced_telemetry_enabled() -> bool {
     false
 }
 
 /// Returns telemetry status based on environment variable.
-/// Defaults to off; users can opt-in with CLAURST_ENABLE_TELEMETRY=1.
+/// Defaults to off; users can opt-in with `CLAURST_ENABLE_TELEMETRY=1`.
 /// The free/OSS build respects this preference but does not phone home.
+#[must_use]
 pub fn is_telemetry_enabled() -> bool {
     std::env::var("CLAURST_ENABLE_TELEMETRY")
         .as_deref()
@@ -233,7 +239,7 @@ mod tests {
         m.add_cost(0.01);
         let cost = m.total_cost_usd();
         // Allow small floating-point tolerance
-        assert!((cost - 0.01).abs() < 1e-9, "cost = {}", cost);
+        assert!((cost - 0.01).abs() < 1e-9, "cost = {cost}");
     }
 
     #[test]
@@ -242,7 +248,7 @@ mod tests {
         m.add_cost(1.0);
         m.add_cost(2.5);
         let cost = m.total_cost_usd();
-        assert!((cost - 3.5).abs() < 1e-9, "cost = {}", cost);
+        assert!((cost - 3.5).abs() < 1e-9, "cost = {cost}");
     }
 
     #[test]

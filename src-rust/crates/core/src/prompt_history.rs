@@ -87,7 +87,7 @@ struct StoredPastedContent {
     pub id: u32,
     #[serde(rename = "type")]
     pub kind: PastedContentKind,
-    /// Inline content for small pastes (≤ MAX_PASTED_CONTENT_LENGTH bytes).
+    /// Inline content for small pastes (≤ `MAX_PASTED_CONTENT_LENGTH` bytes).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     /// SHA-256 hex reference for large pastes stored externally.
@@ -131,8 +131,8 @@ impl HistoryState {
     }
 }
 
-static STATE: once_cell::sync::Lazy<Mutex<HistoryState>> =
-    once_cell::sync::Lazy::new(|| Mutex::new(HistoryState::new()));
+static STATE: std::sync::LazyLock<Mutex<HistoryState>> =
+    std::sync::LazyLock::new(|| Mutex::new(HistoryState::new()));
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -338,8 +338,7 @@ async fn flush_entries(entries: Vec<LogEntry>) {
 /// a no-op.
 pub fn add_to_history(entry: HistoryEntry) {
     if std::env::var("CLAURST_SKIP_PROMPT_HISTORY")
-        .map(|v| matches!(v.to_lowercase().as_str(), "1" | "true" | "yes"))
-        .unwrap_or(false)
+        .is_ok_and(|v| matches!(v.to_lowercase().as_str(), "1" | "true" | "yes"))
     {
         return;
     }
@@ -400,7 +399,7 @@ pub fn add_to_history(entry: HistoryEntry) {
 
     // Push to pending buffer and record as last-added.
     let to_flush = {
-        let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        let mut state = STATE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         state.pending.push(log_entry.clone());
         state.last_added = Some(log_entry);
         // Drain the pending buffer to hand off to the flush task.
@@ -419,13 +418,13 @@ pub async fn get_history(project: &str, current_session_id: Option<&str>) -> Vec
     let path = history_path();
 
     let (pending, skipped) = {
-        let state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        let state = STATE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         (state.pending.clone(), state.skipped_timestamps.clone())
     };
 
     // Read lines from disk newest-first (reverse the file).
     let disk_lines: Vec<String> = match fs::read_to_string(&path).await {
-        Ok(content) => content.lines().rev().map(|l| l.to_string()).collect(),
+        Ok(content) => content.lines().rev().map(std::string::ToString::to_string).collect(),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
         Err(e) => {
             debug!("Failed to read history file: {}", e);
@@ -444,13 +443,12 @@ pub async fn get_history(project: &str, current_session_id: Option<&str>) -> Vec
         match serde_json::from_str::<LogEntry>(line) {
             Ok(entry) => {
                 // Apply skip-set.
-                if let Some(sid) = current_session_id {
-                    if entry.session_id.as_deref() == Some(sid)
+                if let Some(sid) = current_session_id
+                    && entry.session_id.as_deref() == Some(sid)
                         && skipped.contains(&entry.timestamp)
                     {
                         continue;
                     }
-                }
                 all_entries.push(entry);
             }
             Err(e) => {
@@ -532,6 +530,7 @@ async fn resolve_stored(stored: &StoredPastedContent) -> Option<PastedContent> {
 ///
 /// Image references (`[Image #N]`) are left unchanged.  Replacements are
 /// applied in reverse-index order to keep earlier byte offsets valid.
+#[must_use]
 pub fn expand_pasted_text_refs(input: &str, contents: &HashMap<u32, PastedContent>) -> String {
     let refs = parse_references_with_positions(input);
     let mut expanded = input.to_string();
@@ -555,6 +554,7 @@ pub fn expand_pasted_text_refs(input: &str, contents: &HashMap<u32, PastedConten
 }
 
 /// Extract all numeric IDs from reference patterns in `input`.
+#[must_use]
 pub fn parse_references(input: &str) -> Vec<u32> {
     parse_references_with_positions(input)
         .into_iter()
@@ -648,7 +648,7 @@ fn parse_references_with_positions(input: &str) -> Vec<(u32, String, usize)> {
 ///
 /// Fast path: remove from pending buffer.  Slow path: add timestamp to skip-set.
 pub fn remove_last_from_history() {
-    let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+    let mut state = STATE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let Some(entry) = state.last_added.take() else {
         return;
     };
@@ -666,7 +666,7 @@ pub fn remove_last_from_history() {
 
 /// Wipe all pending entries and state (used in tests).
 pub fn clear_pending_history_entries() {
-    let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+    let mut state = STATE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     state.pending.clear();
     state.last_added = None;
     state.skipped_timestamps.clear();
@@ -677,7 +677,8 @@ pub fn clear_pending_history_entries() {
 // ---------------------------------------------------------------------------
 
 /// Count the number of line-break sequences in `text`.
-/// Matches the TypeScript `getPastedTextRefNumLines` behaviour.
+/// Matches the `TypeScript` `getPastedTextRefNumLines` behaviour.
+#[must_use]
 pub fn get_pasted_text_ref_num_lines(text: &str) -> usize {
     let mut count = 0usize;
     let mut chars = text.chars().peekable();
@@ -693,17 +694,19 @@ pub fn get_pasted_text_ref_num_lines(text: &str) -> usize {
 }
 
 /// Format a text-paste reference placeholder.
+#[must_use]
 pub fn format_pasted_text_ref(id: u32, num_lines: usize) -> String {
     if num_lines == 0 {
-        format!("[Pasted text #{}]", id)
+        format!("[Pasted text #{id}]")
     } else {
-        format!("[Pasted text #{} +{} lines]", id, num_lines)
+        format!("[Pasted text #{id} +{num_lines} lines]")
     }
 }
 
 /// Format an image reference placeholder.
+#[must_use]
 pub fn format_image_ref(id: u32) -> String {
-    format!("[Image #{}]", id)
+    format!("[Image #{id}]")
 }
 
 // ---------------------------------------------------------------------------

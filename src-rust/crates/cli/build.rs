@@ -8,11 +8,11 @@ use std::process::Command;
 fn main() {
     // Embed build timestamp (RFC 3339 format)
     let now = chrono::Utc::now().to_rfc3339();
-    println!("cargo:rustc-env=BUILD_TIME={}", now);
+    println!("cargo:rustc-env=BUILD_TIME={now}");
 
     // Embed short git commit hash
     let commit = get_git_commit().unwrap_or_else(|| "unknown".to_string());
-    println!("cargo:rustc-env=GIT_COMMIT={}", commit);
+    println!("cargo:rustc-env=GIT_COMMIT={commit}");
 
     // Package/distribution metadata
     println!("cargo:rustc-env=PACKAGE_URL=claurst-source-snapshot");

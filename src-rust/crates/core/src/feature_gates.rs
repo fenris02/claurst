@@ -18,8 +18,8 @@ use serde::de::DeserializeOwned;
 /// characters (except `_`).
 ///
 /// Examples:
-///   "my-feature"       → "MY_FEATURE"
-///   "tengu.tide.elm"   → "TENGU_TIDE_ELM"
+///   "my-feature"       → "`MY_FEATURE`"
+///   "tengu.tide.elm"   → "`TENGU_TIDE_ELM`"
 ///   "some:special!name" → "SOMESPECIALNAME"
 fn normalize_name(name: &str) -> String {
     name.chars()
@@ -41,8 +41,9 @@ fn normalize_name(name: &str) -> String {
 /// Reads `CLAURST_FEATURE_<NORMALIZED_NAME>` and returns `true` when the
 /// value is truthy ("1", "true", "yes", "on" — case-insensitive).
 ///
-/// Mirrors `checkStatsigFeatureGate_CACHED_MAY_BE_STALE` from the TypeScript
-/// GrowthBook integration.
+/// Mirrors `checkStatsigFeatureGate_CACHED_MAY_BE_STALE` from the `TypeScript`
+/// `GrowthBook` integration.
+#[must_use]
 pub fn is_feature_enabled(gate_name: &str) -> bool {
     let key = format!("CLAURST_FEATURE_{}", normalize_name(gate_name));
     is_env_truthy(std::env::var(&key).ok().as_deref())
@@ -57,7 +58,7 @@ pub fn is_feature_enabled(gate_name: &str) -> bool {
 /// Reads `CLAURST_DYNAMIC_CONFIG_<NORMALIZED_NAME>`.  If the variable is
 /// not set, or parsing fails, `default` is returned unchanged.
 ///
-/// Mirrors `getDynamicConfig_CACHED_MAY_BE_STALE` from the TypeScript source.
+/// Mirrors `getDynamicConfig_CACHED_MAY_BE_STALE` from the `TypeScript` source.
 pub fn get_dynamic_config<T: DeserializeOwned>(name: &str, default: T) -> T {
     let key = format!("CLAURST_DYNAMIC_CONFIG_{}", normalize_name(name));
     match std::env::var(&key) {
@@ -76,6 +77,7 @@ pub fn get_dynamic_config<T: DeserializeOwned>(name: &str, default: T) -> T {
 /// experience.  It is enabled by either:
 ///   - The `CLAURST_SIMPLE=1` environment variable, OR
 ///   - The `--bare` flag in `std::env::args()`.
+#[must_use]
 pub fn is_bare_mode() -> bool {
     // Check env var
     if is_env_truthy(std::env::var("CLAURST_SIMPLE").ok().as_deref()) {
@@ -93,6 +95,7 @@ pub fn is_bare_mode() -> bool {
 ///
 /// Truthy: `"1"`, `"true"`, `"yes"`, `"on"` (case-insensitive).
 /// `None` (variable unset) is falsy.
+#[must_use]
 pub fn is_env_truthy(val: Option<&str>) -> bool {
     match val {
         Some(v) => matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"),
@@ -104,6 +107,7 @@ pub fn is_env_truthy(val: Option<&str>) -> bool {
 ///
 /// Falsy: `"0"`, `"false"`, `"no"`, `"off"` (case-insensitive).
 /// `None` (variable unset) returns `false` — unset is *not* defined-falsy.
+#[must_use]
 pub fn is_env_defined_falsy(val: Option<&str>) -> bool {
     match val {
         Some(v) => {
@@ -132,8 +136,7 @@ pub fn parse_env_vars(args: &[String]) -> anyhow::Result<HashMap<String, String>
             map.insert(key, value);
         } else {
             return Err(anyhow::anyhow!(
-                "Invalid env-var format '{}': expected KEY=VALUE",
-                entry
+                "Invalid env-var format '{entry}': expected KEY=VALUE"
             ));
         }
     }
@@ -146,6 +149,7 @@ pub fn parse_env_vars(args: &[String]) -> anyhow::Result<HashMap<String, String>
 
 /// Resolve the AWS region, checking `AWS_REGION` then `AWS_DEFAULT_REGION`,
 /// falling back to `"us-east-1"`.
+#[must_use]
 pub fn get_aws_region() -> String {
     std::env::var("AWS_REGION")
         .or_else(|_| std::env::var("AWS_DEFAULT_REGION"))
@@ -184,14 +188,14 @@ mod tests {
     #[test]
     fn truthy_values() {
         for v in &["1", "true", "True", "TRUE", "yes", "YES", "on", "ON"] {
-            assert!(is_env_truthy(Some(v)), "expected truthy for {:?}", v);
+            assert!(is_env_truthy(Some(v)), "expected truthy for {v:?}");
         }
     }
 
     #[test]
     fn falsy_values_are_not_truthy() {
         for v in &["0", "false", "no", "off", "", "anything"] {
-            assert!(!is_env_truthy(Some(v)), "expected non-truthy for {:?}", v);
+            assert!(!is_env_truthy(Some(v)), "expected non-truthy for {v:?}");
         }
         assert!(!is_env_truthy(None));
     }
@@ -203,8 +207,7 @@ mod tests {
         for v in &["0", "false", "False", "FALSE", "no", "NO", "off", "OFF"] {
             assert!(
                 is_env_defined_falsy(Some(v)),
-                "expected defined-falsy for {:?}",
-                v
+                "expected defined-falsy for {v:?}"
             );
         }
     }
@@ -214,8 +217,7 @@ mod tests {
         for v in &["1", "true", "yes", "on", ""] {
             assert!(
                 !is_env_defined_falsy(Some(v)),
-                "expected non-defined-falsy for {:?}",
-                v
+                "expected non-defined-falsy for {v:?}"
             );
         }
         assert!(!is_env_defined_falsy(None));

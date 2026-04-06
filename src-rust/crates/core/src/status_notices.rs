@@ -37,11 +37,13 @@ impl StatusNotice {
         }
     }
 
+    #[must_use]
     pub fn ephemeral(mut self) -> Self {
         self.ephemeral = true;
         self
     }
 
+    #[must_use]
     pub fn expires_in_ms(mut self, ms: u64) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -51,6 +53,7 @@ impl StatusNotice {
         self
     }
 
+    #[must_use]
     pub fn is_expired(&self) -> bool {
         if let Some(exp) = self.expires_at_ms {
             let now = std::time::SystemTime::now()
@@ -76,6 +79,7 @@ pub mod notice_ids {
 }
 
 /// Build the standard compact warning notice.
+#[must_use]
 pub fn compact_warning_notice(fill_pct: f64) -> StatusNotice {
     if fill_pct >= 0.95 {
         StatusNotice::new(

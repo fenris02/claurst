@@ -28,8 +28,8 @@ use tracing::{debug, warn};
 const SETTINGS_FILENAME: &str = "remote-settings.json";
 const SETTINGS_TIMEOUT_SECS: u64 = 10;
 const DEFAULT_MAX_RETRIES: u32 = 5;
-/// 1-hour polling interval (matches TypeScript POLLING_INTERVAL_MS)
-pub const DEFAULT_POLLING_INTERVAL: Duration = Duration::from_secs(60 * 60);
+/// 1-hour polling interval (matches `TypeScript` `POLLING_INTERVAL_MS`)
+pub const DEFAULT_POLLING_INTERVAL: Duration = Duration::from_hours(1);
 
 // ---------------------------------------------------------------------------
 // Free-code stub: no remote settings fetching
@@ -53,7 +53,7 @@ pub struct RemoteSettingsConfig {
     pub api_key: Option<String>,
     /// OAuth bearer token (Authorization: Bearer …).
     pub oauth_token: Option<String>,
-    /// Base URL for the Anthropic API (default: https://api.anthropic.com).
+    /// Base URL for the Anthropic API (default: <https://api.anthropic.com>).
     pub base_url: String,
     /// How often to poll for new settings in the background.
     pub polling_interval: Duration,
@@ -75,7 +75,7 @@ impl Default for RemoteSettingsConfig {
 pub struct RemoteSettingsCache {
     /// The cached settings object (may be empty `{}`).
     pub settings: Option<Value>,
-    /// SHA-256 checksum of the settings used for HTTP ETag caching.
+    /// SHA-256 checksum of the settings used for HTTP `ETag` caching.
     pub checksum: Option<String>,
     /// When the cache was last successfully fetched from the API.
     pub fetched_at: Option<DateTime<Utc>>,
@@ -85,7 +85,7 @@ pub struct RemoteSettingsCache {
 #[derive(Debug, Deserialize)]
 struct RemoteSettingsResponse {
     /// Settings UUID (informational only).
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     uuid: Option<String>,
     /// Server-computed checksum.
     checksum: Option<String>,
@@ -107,6 +107,7 @@ pub struct RemoteSettingsManager {
 impl RemoteSettingsManager {
     /// Create a new manager with the given config.
     /// The cache file lives at `<claude_config_dir>/remote-settings.json`.
+    #[must_use]
     pub fn new(config: RemoteSettingsConfig) -> Self {
         let cache_path = claude_config_dir().join(SETTINGS_FILENAME);
         let http = reqwest::Client::builder()
@@ -126,8 +127,9 @@ impl RemoteSettingsManager {
     /// have enterprise access — the server will return 204/empty for those
     /// without managed settings, so we treat all authenticated users as
     /// "eligible" and let the server determine actual access.
+    #[must_use]
     pub fn is_eligible(api_key: Option<&str>) -> bool {
-        api_key.map(|k| !k.is_empty()).unwrap_or(false)
+        api_key.is_some_and(|k| !k.is_empty())
     }
 
     /// Endpoint URL for remote settings.
@@ -138,19 +140,17 @@ impl RemoteSettingsManager {
     /// Build auth headers. API key takes precedence over OAuth.
     fn auth_headers(&self) -> Option<std::collections::HashMap<String, String>> {
         let mut headers = std::collections::HashMap::new();
-        if let Some(ref key) = self.config.api_key {
-            if !key.is_empty() {
+        if let Some(ref key) = self.config.api_key
+            && !key.is_empty() {
                 headers.insert("x-api-key".to_string(), key.clone());
                 return Some(headers);
             }
-        }
-        if let Some(ref token) = self.config.oauth_token {
-            if !token.is_empty() {
-                headers.insert("Authorization".to_string(), format!("Bearer {}", token));
+        if let Some(ref token) = self.config.oauth_token
+            && !token.is_empty() {
+                headers.insert("Authorization".to_string(), format!("Bearer {token}"));
                 headers.insert("anthropic-beta".to_string(), "oauth-2025-04-20".to_string());
                 return Some(headers);
             }
-        }
         None
     }
 
@@ -195,7 +195,7 @@ impl RemoteSettingsManager {
             req = req.header(k.as_str(), v.as_str());
         }
         if let Some(cs) = cached_checksum {
-            req = req.header("If-None-Match", format!("\"{}\"", cs));
+            req = req.header("If-None-Match", format!("\"{cs}\""));
         }
 
         let resp = req.send().await?;
@@ -213,10 +213,10 @@ impl RemoteSettingsManager {
             200 => {}
             401 | 403 => {
                 // Auth errors are terminal — no point retrying
-                anyhow::bail!("Remote settings: not authorized ({})", status);
+                anyhow::bail!("Remote settings: not authorized ({status})");
             }
             other => {
-                anyhow::bail!("Remote settings: unexpected status {}", other);
+                anyhow::bail!("Remote settings: unexpected status {other}");
             }
         }
 
@@ -273,17 +273,14 @@ impl RemoteSettingsManager {
     /// Fails open: returns the stale cached value (or `None`) on any error.
     pub async fn fetch_once_and_cache(&self) -> Option<Value> {
         // Load any previously cached settings to compute an ETag checksum.
-        let cached_raw = match tokio::fs::read_to_string(&self.cache_path).await {
-            Ok(text) => Some(text),
-            Err(_) => None,
-        };
+        let cached_raw = tokio::fs::read_to_string(&self.cache_path).await.ok();
         let cached_settings: Option<Value> = cached_raw
             .as_deref()
             .and_then(|t| serde_json::from_str(t).ok());
 
         let cached_checksum = cached_settings
             .as_ref()
-            .map(|s| compute_checksum_from_settings(s));
+            .map(compute_checksum_from_settings);
 
         match self.fetch_with_retry(cached_checksum.as_deref()).await {
             Ok(Some(new_settings)) => {
@@ -322,7 +319,7 @@ impl RemoteSettingsManager {
 
         loop {
             tokio::select! {
-                _ = cancel.cancelled() => {
+                () = cancel.cancelled() => {
                     debug!("Remote settings: background polling stopped");
                     break;
                 }
@@ -344,6 +341,7 @@ impl RemoteSettingsManager {
 /// Keys are sorted recursively to produce a canonical representation,
 /// matching the Python server-side implementation:
 /// `json.dumps(settings, sort_keys=True, separators=(",", ":"))`.
+#[must_use]
 pub fn compute_checksum_from_settings(settings: &Value) -> String {
     let sorted = sort_keys_deep(settings);
     let canonical = serde_json::to_string(&sorted).unwrap_or_default();
@@ -353,12 +351,12 @@ pub fn compute_checksum_from_settings(settings: &Value) -> String {
     format!("sha256:{}", hex::encode(digest))
 }
 
-/// Recursively sort all object keys (mirrors `sortKeysDeep` in TypeScript).
+/// Recursively sort all object keys (mirrors `sortKeysDeep` in `TypeScript`).
 fn sort_keys_deep(value: &Value) -> Value {
     match value {
         Value::Object(map) => {
             let mut sorted: serde_json::Map<String, Value> = serde_json::Map::new();
-            let mut keys: Vec<&str> = map.keys().map(|k| k.as_str()).collect();
+            let mut keys: Vec<&str> = map.keys().map(std::string::String::as_str).collect();
             keys.sort_unstable();
             for key in keys {
                 sorted.insert(key.to_string(), sort_keys_deep(&map[key]));
@@ -378,6 +376,7 @@ fn sort_keys_deep(value: &Value) -> Value {
 ///
 /// Remote settings take precedence for any key they define (enterprise policy
 /// override). Local settings fill in everything else.
+#[must_use]
 pub fn merge_remote_into_local(local: &Value, remote: &Value) -> Value {
     match (local, remote) {
         (Value::Object(local_map), Value::Object(remote_map)) => {
@@ -398,13 +397,11 @@ pub fn merge_remote_into_local(local: &Value, remote: &Value) -> Value {
 
 /// Return the ~/.claurst directory, falling back to the current directory.
 fn claude_config_dir() -> PathBuf {
-    dirs::home_dir()
-        .map(|h| h.join(".claurst"))
-        .unwrap_or_else(|| PathBuf::from(".claurst"))
+    dirs::home_dir().map_or_else(|| PathBuf::from(".claurst"), |h| h.join(".claurst"))
 }
 
 /// Exponential backoff delay for retry attempt `n` (1-indexed).
-/// Matches the TypeScript `getRetryDelay` pattern: 1s, 2s, 4s, 8s, 16s …
+/// Matches the `TypeScript` `getRetryDelay` pattern: 1s, 2s, 4s, 8s, 16s …
 fn retry_delay(attempt: u32) -> Duration {
     let shift = attempt.saturating_sub(1).min(30); // prevent overflow
     let secs: u64 = 1u64.checked_shl(shift).unwrap_or(u64::MAX).min(30);

@@ -19,21 +19,25 @@ pub enum AutoApproveMode {
 
 impl AutoApproveMode {
     /// True if this mode auto-approves bash/shell command execution.
+    #[must_use]
     pub fn auto_approves_bash(&self) -> bool {
         matches!(self, Self::BypassPermissions)
     }
 
     /// True if this mode auto-approves file edits.
+    #[must_use]
     pub fn auto_approves_edits(&self) -> bool {
         matches!(self, Self::AcceptEdits | Self::BypassPermissions)
     }
 
     /// True if this mode shows a plan before tool execution.
+    #[must_use]
     pub fn is_plan_mode(&self) -> bool {
         matches!(self, Self::Plan)
     }
 
     /// Short display label for status line.
+    #[must_use]
     pub fn label(&self) -> &'static str {
         match self {
             Self::None => "",
@@ -58,6 +62,7 @@ pub struct AutoModeState {
 }
 
 impl AutoModeState {
+    #[must_use]
     pub fn new(mode: AutoApproveMode) -> Self {
         Self {
             mode,

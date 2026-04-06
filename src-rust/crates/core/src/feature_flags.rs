@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tracing::{debug, warn};
 
-/// Represents a feature flag from GrowthBook
+/// Represents a feature flag from `GrowthBook`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeatureFlag {
     /// The ID of the feature flag
@@ -38,14 +38,14 @@ struct CachedFlags {
     fetched_at: u64,
 }
 
-/// Manages feature flags from GrowthBook
+/// Manages feature flags from `GrowthBook`
 #[derive(Clone)]
 pub struct FeatureFlagManager {
     /// Map of flag key to flag value
     flags: Arc<parking_lot::RwLock<HashMap<String, bool>>>,
     /// Cache file path
     cache_path: PathBuf,
-    /// GrowthBook API endpoint
+    /// `GrowthBook` API endpoint
     api_endpoint: String,
     /// Cache TTL in seconds (default: 1 hour)
     cache_ttl: u64,
@@ -56,7 +56,8 @@ pub struct FeatureFlagManager {
 impl FeatureFlagManager {
     /// Create a new feature flag manager
     ///
-    /// The API key is automatically fetched from the GROWTHBOOK_API_KEY environment variable.
+    /// The API key is automatically fetched from the `GROWTHBOOK_API_KEY` environment variable.
+    #[must_use]
     pub fn new() -> Self {
         let cache_path = Self::get_cache_path();
         let api_endpoint = "https://api.growthbook.io/api/features".to_string();
@@ -71,7 +72,7 @@ impl FeatureFlagManager {
         }
     }
 
-    /// Get the cache file path (~/.claurst/feature_flags.json)
+    /// Get the cache file path (~/.`claurst/feature_flags.json`)
     fn get_cache_path() -> PathBuf {
         let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
         home.join(".claurst").join("feature_flags.json")
@@ -81,27 +82,27 @@ impl FeatureFlagManager {
     ///
     /// # Arguments
     /// * `name` - The feature flag key to check
+    #[must_use]
     pub fn flag(&self, name: &str) -> bool {
         let flags = self.flags.read();
         flags.get(name).copied().unwrap_or(false)
     }
 
-    /// Fetch flags from GrowthBook API
+    /// Fetch flags from `GrowthBook` API
     ///
     /// This is an async operation that:
     /// 1. Checks if cached flags are still valid (within TTL)
-    /// 2. If cache is stale, fetches from GrowthBook API
+    /// 2. If cache is stale, fetches from `GrowthBook` API
     /// 3. Saves the response to the cache file
     /// 4. Updates the in-memory flags
     pub async fn fetch_flags_async(&self) -> Result<()> {
         // Try to load from cache first
-        if let Ok(cached) = self.load_cached_flags().await {
-            if self.is_cache_valid(&cached) {
+        if let Ok(cached) = self.load_cached_flags().await
+            && self.is_cache_valid(&cached) {
                 debug!("Using cached feature flags");
                 self.update_flags_from_cached(&cached);
                 return Ok(());
             }
-        }
 
         // Cache is stale or missing, fetch from API
         debug!("Fetching feature flags from GrowthBook API");
@@ -130,7 +131,7 @@ impl FeatureFlagManager {
         }
     }
 
-    /// Fetch flags from GrowthBook API
+    /// Fetch flags from `GrowthBook` API
     async fn fetch_from_api(&self) -> Result<CachedFlags> {
         let api_key = std::env::var("GROWTHBOOK_API_KEY").ok();
 
@@ -138,7 +139,7 @@ impl FeatureFlagManager {
 
         // Add authorization header if API key is available
         if let Some(key) = api_key {
-            builder = builder.header("Authorization", format!("Bearer {}", key));
+            builder = builder.header("Authorization", format!("Bearer {key}"));
         }
 
         let response = builder
@@ -218,7 +219,7 @@ impl FeatureFlagManager {
     }
 }
 
-/// Response from GrowthBook API
+/// Response from `GrowthBook` API
 #[derive(Debug, Deserialize)]
 struct GrowthBookApiResponse {
     /// Map of feature flag keys to flag objects

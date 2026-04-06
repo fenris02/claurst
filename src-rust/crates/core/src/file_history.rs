@@ -35,7 +35,7 @@ pub struct FileHistoryEntry {
     pub turn_index: usize,
     /// Unix timestamp (ms) of the modification.
     pub timestamp_ms: u64,
-    /// Tool that made the change ("FileEdit", "FileWrite", etc.).
+    /// Tool that made the change ("`FileEdit`", "`FileWrite`", etc.).
     pub tool_name: String,
 }
 
@@ -63,6 +63,7 @@ pub struct TurnFileSnapshot {
 }
 
 impl FileHistory {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -95,6 +96,7 @@ impl FileHistory {
     }
 
     /// Return all recorded modifications for `path`, in chronological order.
+    #[must_use]
     pub fn get_file_history(&self, path: &Path) -> Vec<&FileHistoryEntry> {
         match self.by_path.get(path) {
             Some(indices) => indices.iter().map(|&i| &self.entries[i]).collect(),
@@ -103,6 +105,7 @@ impl FileHistory {
     }
 
     /// Return all recorded modifications for `turn_index`, in chronological order.
+    #[must_use]
     pub fn get_entries_for_turn(&self, turn_index: usize) -> Vec<&FileHistoryEntry> {
         self.entries
             .iter()
@@ -110,11 +113,13 @@ impl FileHistory {
             .collect()
     }
 
+    #[must_use]
     pub fn latest_turn_index(&self) -> Option<usize> {
         self.entries.iter().map(|entry| entry.turn_index).max()
     }
 
     /// Return all files that were modified at or after `turn_index`.
+    #[must_use]
     pub fn get_files_changed_since(&self, turn_index: usize) -> Vec<PathBuf> {
         let mut paths: Vec<PathBuf> = self
             .entries
@@ -131,6 +136,7 @@ impl FileHistory {
     ///
     /// Finds the most recent entry for `path` with `turn_index < rewind_to`.
     /// Returns the content to restore, or `None` if no earlier state is known.
+    #[must_use]
     pub fn state_at_turn(&self, path: &Path, rewind_to: usize) -> Option<String> {
         let indices = self.by_path.get(path)?;
         // Find the earliest modification at or after rewind_to.
@@ -144,20 +150,24 @@ impl FileHistory {
     }
 
     /// Number of entries recorded.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 
     /// All entries (for persistence / serialisation).
+    #[must_use]
     pub fn entries(&self) -> &[FileHistoryEntry] {
         &self.entries
     }
 
     /// Return squashed snapshots for every file changed in `turn_index`.
+    #[must_use]
     pub fn snapshots_for_turn(&self, turn_index: usize) -> Vec<TurnFileSnapshot> {
         let mut snapshots_by_path: HashMap<PathBuf, TurnFileSnapshot> = HashMap::new();
 
@@ -182,6 +192,7 @@ impl FileHistory {
         snapshots
     }
 
+    #[must_use]
     pub fn from_entries(entries: Vec<FileHistoryEntry>) -> Self {
         let mut by_path: HashMap<PathBuf, Vec<usize>> = HashMap::new();
         for (idx, entry) in entries.iter().enumerate() {

@@ -2,6 +2,7 @@
 
 /// Truncate `text` to at most `max_chars` characters.
 /// If truncated, appends `… (truncated)`.
+#[must_use]
 pub fn truncate_text(text: &str, max_chars: usize) -> String {
     if text.len() <= max_chars {
         return text.to_string();
@@ -16,6 +17,7 @@ pub fn truncate_text(text: &str, max_chars: usize) -> String {
 
 /// Truncate a list of lines to at most `max_lines`.
 /// If truncated, appends a `"… N more lines"` indicator.
+#[must_use]
 pub fn truncate_lines(lines: &[String], max_lines: usize) -> (Vec<String>, bool) {
     if lines.len() <= max_lines {
         return (lines.to_vec(), false);
@@ -32,6 +34,7 @@ pub fn truncate_lines(lines: &[String], max_lines: usize) -> (Vec<String>, bool)
 
 /// Truncate tool output to a safe display length.
 /// Returns `(truncated_text, was_truncated)`.
+#[must_use]
 pub fn truncate_tool_output(text: &str, max_chars: usize) -> (String, bool) {
     if text.len() <= max_chars {
         return (text.to_string(), false);
@@ -47,6 +50,7 @@ pub fn truncate_tool_output(text: &str, max_chars: usize) -> (String, bool) {
 }
 
 /// Truncate a file path for display, keeping the filename and shortening the directory.
+#[must_use]
 pub fn truncate_path(path: &str, max_chars: usize) -> String {
     if path.len() <= max_chars {
         return path.to_string();
@@ -87,7 +91,7 @@ mod tests {
 
     #[test]
     fn truncate_lines_over_limit() {
-        let lines: Vec<String> = (0..10).map(|i| format!("line {}", i)).collect();
+        let lines: Vec<String> = (0..10).map(|i| format!("line {i}")).collect();
         let (out, truncated) = truncate_lines(&lines, 5);
         assert!(truncated);
         assert_eq!(out.len(), 6); // 5 lines + 1 indicator

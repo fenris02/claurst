@@ -62,6 +62,7 @@ pub struct AttachmentContext<'a> {
 /// Assemble all context attachments for the current turn.
 ///
 /// Returns a vec of attachments to inject as a pre-turn context message.
+#[must_use]
 pub fn get_attachments(ctx: &AttachmentContext<'_>) -> Vec<Attachment> {
     let mut attachments = Vec::new();
 
@@ -78,7 +79,7 @@ pub fn get_attachments(ctx: &AttachmentContext<'_>) -> Vec<Attachment> {
                 "Files changed since last turn:\n{}",
                 changed
                     .iter()
-                    .map(|f| format!("  {}", f))
+                    .map(|f| format!("  {f}"))
                     .collect::<Vec<_>>()
                     .join("\n")
             );
@@ -93,15 +94,16 @@ pub fn get_attachments(ctx: &AttachmentContext<'_>) -> Vec<Attachment> {
 ///
 /// Returns a formatted string like:
 /// `IDE: VS Code, workspace: /path/to/project, selection: L10-L20 in foo.rs`
+#[must_use]
 pub fn get_ide_context() -> Option<String> {
     let lockfile_dir = dirs::home_dir()?.join(".claurst").join("ide");
     let entries = std::fs::read_dir(&lockfile_dir).ok()?;
 
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.extension().map_or(false, |e| e == "lock") {
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                if let Ok(info) = serde_json::from_str::<serde_json::Value>(&content) {
+        if path.extension().is_some_and(|e| e == "lock")
+            && let Ok(content) = std::fs::read_to_string(&path)
+                && let Ok(info) = serde_json::from_str::<serde_json::Value>(&content) {
                     let pid = info["pid"].as_u64().unwrap_or(0);
                     if !is_pid_alive(pid) {
                         continue;
@@ -114,24 +116,21 @@ pub fn get_ide_context() -> Option<String> {
                         .unwrap_or("");
                     let mut parts = vec![format!("IDE: {}", ide_name)];
                     if !workspace.is_empty() {
-                        parts.push(format!("workspace: {}", workspace));
+                        parts.push(format!("workspace: {workspace}"));
                     }
                     // Active file/selection if present
                     if let Some(file) = info["activeFile"].as_str() {
-                        parts.push(format!("active file: {}", file));
+                        parts.push(format!("active file: {file}"));
                         if let (Some(start), Some(end)) = (
                             info["selectionStart"].as_u64(),
                             info["selectionEnd"].as_u64(),
-                        ) {
-                            if start != end {
-                                parts.push(format!("selection: L{}-L{}", start, end));
+                        )
+                            && start != end {
+                                parts.push(format!("selection: L{start}-L{end}"));
                             }
-                        }
                     }
                     return Some(parts.join(", "));
                 }
-            }
-        }
     }
     None
 }
@@ -151,11 +150,12 @@ fn is_pid_alive(pid: u64) -> bool {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        std::path::Path::new(&format!("/proc/{}", pid)).exists()
+        std::path::Path::new(&format!("/proc/{pid}")).exists()
     }
 }
 
 /// Get files changed since `since_ms` (Unix timestamp in ms) using git.
+#[must_use]
 pub fn get_changed_files(project_root: &Path, since_ms: u64) -> Vec<String> {
     // Try git diff --name-only --diff-filter=M
     let output = std::process::Command::new("git")
@@ -167,7 +167,7 @@ pub fn get_changed_files(project_root: &Path, since_ms: u64) -> Vec<String> {
         Ok(out) if out.status.success() => String::from_utf8_lossy(&out.stdout)
             .lines()
             .filter(|l| !l.is_empty())
-            .map(|l| l.to_string())
+            .map(std::string::ToString::to_string)
             .collect(),
         _ => {
             // Fallback: scan for files modified since timestamp using mtime
@@ -196,8 +196,8 @@ fn scan_modified_files(dir: &Path, since_secs: u64, out: &mut Vec<String>, depth
         }
         if path.is_dir() {
             scan_modified_files(&path, since_secs, out, depth + 1);
-        } else if let Ok(meta) = entry.metadata() {
-            if let Ok(modified) = meta.modified() {
+        } else if let Ok(meta) = entry.metadata()
+            && let Ok(modified) = meta.modified() {
                 let mtime = modified
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
@@ -206,22 +206,23 @@ fn scan_modified_files(dir: &Path, since_secs: u64, out: &mut Vec<String>, depth
                     out.push(path.to_string_lossy().to_string());
                 }
             }
-        }
     }
 }
 
 /// Build a hook result attachment message.
+#[must_use]
 pub fn make_hook_result_attachment(hook_name: &str, output: &str, success: bool) -> Attachment {
     let kind = if success {
         AttachmentKind::HookSuccess
     } else {
         AttachmentKind::HookError
     };
-    Attachment::new(kind, format!("[Hook: {}]\n{}", hook_name, output))
+    Attachment::new(kind, format!("[Hook: {hook_name}]\n{output}"))
         .with_label(hook_name.to_string())
 }
 
 /// Compute the diff of available tools between two turns.
+#[must_use]
 pub fn get_deferred_tools_delta(prev_tools: &[String], curr_tools: &[String]) -> Vec<String> {
     curr_tools
         .iter()

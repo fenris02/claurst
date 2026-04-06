@@ -1,6 +1,6 @@
 //! Modular system prompt assembly with caching support.
 //!
-//! Mirrors the TypeScript `systemPromptSections.ts` / `prompts.ts` architecture:
+//! Mirrors the `TypeScript` `systemPromptSections.ts` / `prompts.ts` architecture:
 //! cacheable (static) sections are placed before `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`;
 //! volatile, session-specific sections follow it.
 
@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 /// Marker that splits the cached vs dynamic parts of the system prompt.
 /// Everything before this marker can be prompt-cached by the API.
-/// Matches the TypeScript constant `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`.
+/// Matches the `TypeScript` constant `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`.
 pub const SYSTEM_PROMPT_DYNAMIC_BOUNDARY: &str = "__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__";
 
 // ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ impl SystemPromptSection {
     pub fn uncached(tag: &'static str, content: Option<impl Into<String>>) -> Self {
         Self {
             tag,
-            content: content.map(|c| c.into()),
+            content: content.map(std::convert::Into::into),
             cache_break: true,
         }
     }
@@ -88,6 +88,7 @@ pub enum OutputStyle {
 
 impl OutputStyle {
     /// Returns the system-prompt suffix for this style, or `None` for Default.
+    #[must_use]
     pub fn prompt_suffix(self) -> Option<&'static str> {
         match self {
             OutputStyle::Explanatory => Some(
@@ -113,6 +114,7 @@ impl OutputStyle {
     }
 
     /// Parse from a string (case-insensitive).
+    #[must_use]
     pub fn from_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "explanatory" => Self::Explanatory,
@@ -138,7 +140,7 @@ pub enum SystemPromptPrefix {
     /// Running as a sub-agent spawned by the Claude Agent SDK.
     Sdk,
     /// The CLI preset running within the Agent SDK
-    /// (non-interactive + append_system_prompt set).
+    /// (non-interactive + `append_system_prompt` set).
     SdkPreset,
     /// Running on Vertex AI.
     Vertex,
@@ -150,6 +152,7 @@ pub enum SystemPromptPrefix {
 
 impl SystemPromptPrefix {
     /// Detect from environment variables, mirroring `getCLISyspromptPrefix`.
+    #[must_use]
     pub fn detect(is_non_interactive: bool, has_append_system_prompt: bool) -> Self {
         // Vertex: always uses the default "Claurst" prefix.
         if std::env::var("ANTHROPIC_VERTEX_PROJECT_ID").is_ok()
@@ -178,6 +181,7 @@ impl SystemPromptPrefix {
     }
 
     /// The opening attribution string for this prefix variant.
+    #[must_use]
     pub fn attribution_text(self) -> &'static str {
         match self {
             Self::Cli | Self::Vertex | Self::Bedrock | Self::Remote => {
@@ -237,13 +241,13 @@ pub struct SystemPromptOptions {
 /// internal marker.  Callers (e.g. `buildSystemPromptBlocks` in cc-query)
 /// split on this marker to determine which portions are eligible for
 /// Anthropic prompt-caching.
+#[must_use]
 pub fn build_system_prompt(opts: &SystemPromptOptions) -> String {
     // Replace mode: skip all default sections.
-    if opts.replace_system_prompt {
-        if let Some(custom) = &opts.custom_system_prompt {
-            return format!("{}\n\n{}", custom, SYSTEM_PROMPT_DYNAMIC_BOUNDARY);
+    if opts.replace_system_prompt
+        && let Some(custom) = &opts.custom_system_prompt {
+            return format!("{custom}\n\n{SYSTEM_PROMPT_DYNAMIC_BOUNDARY}");
         }
-    }
 
     let prefix = opts.prefix.unwrap_or_else(|| {
         SystemPromptPrefix::detect(opts.is_non_interactive, opts.has_append_system_prompt)
@@ -280,7 +284,7 @@ pub fn build_system_prompt(opts: &SystemPromptOptions) -> String {
         .filter(|s| !s.trim().is_empty())
         .or_else(|| opts.output_style.prompt_suffix())
     {
-        parts.push(format!("\n## Output Style\n{}", style_text));
+        parts.push(format!("\n## Output Style\n{style_text}"));
     }
 
     // 8. Coordinator mode (cacheable: content is constant)
@@ -291,8 +295,7 @@ pub fn build_system_prompt(opts: &SystemPromptOptions) -> String {
     // 9. Custom system prompt addition (appended to cacheable block)
     if let Some(custom) = &opts.custom_system_prompt {
         parts.push(format!(
-            "\n<custom_instructions>\n{}\n</custom_instructions>",
-            custom
+            "\n<custom_instructions>\n{custom}\n</custom_instructions>"
         ));
     }
 
@@ -310,7 +313,7 @@ pub fn build_system_prompt(opts: &SystemPromptOptions) -> String {
 
     // 11. Working directory (legacy XML tag kept for caching compat)
     if let Some(cwd) = &opts.working_directory {
-        parts.push(format!("\n<working_directory>{}</working_directory>", cwd));
+        parts.push(format!("\n<working_directory>{cwd}</working_directory>"));
     }
 
     // 12. Memory injection (from memdir)
@@ -320,7 +323,7 @@ pub fn build_system_prompt(opts: &SystemPromptOptions) -> String {
 
     // 13. Appended system prompt (--append-system-prompt)
     if let Some(append) = &opts.append_system_prompt {
-        parts.push(format!("\n{}", append));
+        parts.push(format!("\n{append}"));
     }
 
     parts.join("\n")
@@ -364,9 +367,7 @@ fn build_env_info_section(working_dir: Option<&str>) -> String {
                 .args(["-s", "-r"])
                 .output()
                 .ok()
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| s.trim().to_string())
-                .unwrap_or_else(|| platform.to_string())
+                .and_then(|o| String::from_utf8(o.stdout).ok()).map_or_else(|| platform.to_string(), |s| s.trim().to_string())
         }
     };
 
@@ -389,17 +390,15 @@ fn build_env_info_section(working_dir: Option<&str>) -> String {
     // Shell line: on Windows add Unix syntax note
     let shell_line = if cfg!(target_os = "windows") {
         format!(
-            "Shell: {} (use Unix shell syntax, not Windows — e.g., /dev/null not NUL, forward slashes in paths)",
-            shell_name
+            "Shell: {shell_name} (use Unix shell syntax, not Windows — e.g., /dev/null not NUL, forward slashes in paths)"
         )
     } else {
-        format!("Shell: {}", shell_name)
+        format!("Shell: {shell_name}")
     };
 
     // Is git repo?
     let is_git = working_dir
-        .map(|d| std::path::Path::new(d).join(".git").exists())
-        .unwrap_or(false);
+        .is_some_and(|d| std::path::Path::new(d).join(".git").exists());
 
     // Today's date
     let today = {
@@ -414,33 +413,30 @@ fn build_env_info_section(working_dir: Option<&str>) -> String {
         let year_approx = 1970 + days / 365;
         // Not perfectly accurate but good enough for the system prompt context.
         // For exact dates a chrono dep would be needed; use SystemTime string as fallback.
-        format!("{}", year_approx)
+        format!("{year_approx}")
     };
     let _ = today; // suppress unused warning — date is included below via SystemTime
 
     // Build the section
     let cwd_line = working_dir
-        .map(|d| format!("\nWorking directory: {}", d))
+        .map(|d| format!("\nWorking directory: {d}"))
         .unwrap_or_default();
 
     // Platform-specific guidance so the model uses the right commands.
     let os_note = if cfg!(target_os = "windows") {
         format!(
-            "\nIMPORTANT: The user is on Windows ({}). Use Windows-compatible commands \
+            "\nIMPORTANT: The user is on Windows ({os_version}). Use Windows-compatible commands \
              (e.g., `dir` not `ls`, `type` not `cat`, backslashes in native paths). \
-             When the shell is bash/git-bash, Unix syntax is acceptable.",
-            os_version
+             When the shell is bash/git-bash, Unix syntax is acceptable."
         )
     } else if cfg!(target_os = "macos") {
         format!(
-            "\nThe user is on macOS ({}). Use macOS-compatible commands. \
-             BSD variants of tools apply (e.g., `sed -i ''` not `sed -i`).",
-            os_version
+            "\nThe user is on macOS ({os_version}). Use macOS-compatible commands. \
+             BSD variants of tools apply (e.g., `sed -i ''` not `sed -i`)."
         )
     } else {
         format!(
-            "\nThe user is on Linux ({}). Use Linux-compatible commands.",
-            os_version
+            "\nThe user is on Linux ({os_version}). Use Linux-compatible commands."
         )
     };
 
@@ -459,7 +455,7 @@ fn build_env_info_section(working_dir: Option<&str>) -> String {
 // Static system prompt sections
 // ---------------------------------------------------------------------------
 
-const CORE_CAPABILITIES: &str = r#"
+const CORE_CAPABILITIES: &str = r"
 ## Capabilities
 
 You have access to powerful tools for software engineering tasks:
@@ -478,9 +474,9 @@ You have access to powerful tools for software engineering tasks:
 2. **Minimal changes**: Only modify what's needed. Don't refactor unrequested code.
 3. **Verify**: Check your work with tests or by reading the result
 4. **Communicate blockers**: If stuck, ask the user rather than guessing
-"#;
+";
 
-const TOOL_USE_GUIDELINES: &str = r#"
+const TOOL_USE_GUIDELINES: &str = r"
 ## Tool use guidelines
 
 - Use dedicated tools (Read, Edit, Glob, Grep) instead of bash equivalents
@@ -488,9 +484,9 @@ const TOOL_USE_GUIDELINES: &str = r#"
 - Parallelize independent tool calls in a single response
 - For file edits: always read the file first, then make targeted edits
 - Bash commands timeout after 2 minutes; use background mode for long operations
-"#;
+";
 
-const ACTIONS_SECTION: &str = r#"
+const ACTIONS_SECTION: &str = r"
 ## Executing actions with care
 
 Carefully consider the reversibility and blast radius of actions. For actions
@@ -498,9 +494,9 @@ that are hard to reverse, affect shared systems, or could be risky or
 destructive, check with the user before proceeding. Authorization stands for
 the scope specified, not beyond. Match the scope of your actions to what was
 actually requested.
-"#;
+";
 
-const SAFETY_GUIDELINES: &str = r#"
+const SAFETY_GUIDELINES: &str = r"
 ## Safety guidelines
 
 - Never delete files without explicit user confirmation
@@ -508,19 +504,19 @@ const SAFETY_GUIDELINES: &str = r#"
 - Be careful with destructive operations (rm -rf, DROP TABLE, etc.)
 - Don't commit secrets, credentials, or API keys
 - For ambiguous destructive actions, ask before proceeding
-"#;
+";
 
 /// Security / cyber-risk instruction.
 /// No security guardrails injected.
 const CYBER_RISK_INSTRUCTION: &str = "";
 
-const COORDINATOR_SYSTEM_PROMPT: &str = r#"
+const COORDINATOR_SYSTEM_PROMPT: &str = r"
 ## Coordinator Mode
 
 You are operating as an orchestrator. Spawn parallel worker agents using the Agent tool.
 Each worker prompt must be fully self-contained. Synthesize findings before delegating
 follow-up work. Use TaskCreate/TaskUpdate to track parallel work.
-"#;
+";
 
 // ---------------------------------------------------------------------------
 // Tests

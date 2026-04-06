@@ -61,6 +61,7 @@ pub struct LspServerConfig {
 impl LspServerConfig {
     /// Look up the LSP language identifier for `file_path`, falling back to
     /// `"plaintext"` when the extension is not mapped.
+    #[must_use]
     pub fn language_for_file(&self, file_path: &str) -> String {
         let ext = Path::new(file_path)
             .extension()
@@ -105,6 +106,7 @@ pub enum DiagnosticSeverity {
 }
 
 impl DiagnosticSeverity {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Error => "error",
@@ -532,18 +534,16 @@ impl LspClient {
             .await?;
 
         let mut symbols = Vec::new();
-        match &result {
-            serde_json::Value::Array(arr) => {
-                for sym in arr {
-                    collect_symbol(sym, 0, &mut symbols);
-                }
+        if let serde_json::Value::Array(arr) = &result {
+            for sym in arr {
+                collect_symbol(sym, 0, &mut symbols);
             }
-            _ => {}
         }
         Ok(symbols)
     }
 
     /// Get cached diagnostics for `file_path`.
+    #[must_use]
     pub fn get_diagnostics(&self, file_path: &str) -> Vec<LspDiagnostic> {
         let uri = path_to_uri(file_path);
         self.diagnostics
@@ -553,6 +553,7 @@ impl LspClient {
     }
 
     /// Get all cached diagnostics across every file.
+    #[must_use]
     pub fn all_diagnostics(&self) -> Vec<LspDiagnostic> {
         self.diagnostics
             .iter()
@@ -561,6 +562,7 @@ impl LspClient {
     }
 
     /// Returns `true` if `initialize` has completed successfully.
+    #[must_use]
     pub fn is_initialized(&self) -> bool {
         self.is_initialized
     }
@@ -596,7 +598,7 @@ fn dispatch_incoming(
     diagnostics: &Arc<DashMap<String, Vec<LspDiagnostic>>>, server_name: &str,
 ) {
     // Response to a request we sent
-    if let Some(id) = msg.get("id").and_then(|v| v.as_u64()) {
+    if let Some(id) = msg.get("id").and_then(serde_json::Value::as_u64) {
         if let Some((_, tx)) = pending.remove(&id) {
             let _ = tx.send(msg);
         }
@@ -629,12 +631,9 @@ fn handle_publish_diagnostics(
         None => return,
     };
 
-    let raw_diags = match params.get("diagnostics").and_then(|v| v.as_array()) {
-        Some(d) => d,
-        None => {
-            diagnostics.insert(uri, Vec::new());
-            return;
-        }
+    let raw_diags = if let Some(d) = params.get("diagnostics").and_then(|v| v.as_array()) { d } else {
+        diagnostics.insert(uri, Vec::new());
+        return;
     };
 
     // Convert the URI back to a file path for storage
@@ -666,14 +665,13 @@ fn parse_diagnostic(
 
     let severity = d
         .get("severity")
-        .and_then(|v| v.as_u64())
-        .map(DiagnosticSeverity::from_lsp_int)
-        .unwrap_or(DiagnosticSeverity::Error);
+        .and_then(serde_json::Value::as_u64)
+        .map_or(DiagnosticSeverity::Error, DiagnosticSeverity::from_lsp_int);
 
     let source = d
         .get("source")
         .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .or_else(|| Some(server_name.to_string()));
 
     let code = d.get("code").map(|v| match v {
@@ -713,30 +711,30 @@ fn extract_locations(result: &serde_json::Value) -> Vec<String> {
             let uri = loc.get("uri")?.as_str()?;
             let line = loc
                 .pointer("/range/start/line")
-                .and_then(|v| v.as_u64())
+                .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0)
                 + 1; // convert to 1-based
             let col = loc
                 .pointer("/range/start/character")
-                .and_then(|v| v.as_u64())
+                .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0)
                 + 1;
             let path = uri_to_path(uri);
-            Some(format!("{}:{}:{}", path, line, col))
+            Some(format!("{path}:{line}:{col}"))
         })
         .collect()
 }
 
-/// Recursively collect symbol names from a DocumentSymbol or SymbolInformation node.
+/// Recursively collect symbol names from a `DocumentSymbol` or `SymbolInformation` node.
 fn collect_symbol(sym: &serde_json::Value, depth: usize, out: &mut Vec<String>) {
     let indent = "  ".repeat(depth);
     let name = sym
         .get("name")
         .and_then(|n| n.as_str())
         .unwrap_or("<unnamed>");
-    let kind = sym.get("kind").and_then(|k| k.as_u64()).unwrap_or(0);
+    let kind = sym.get("kind").and_then(serde_json::Value::as_u64).unwrap_or(0);
     let kind_str = symbol_kind_name(kind);
-    out.push(format!("{}{} ({})", indent, name, kind_str));
+    out.push(format!("{indent}{name} ({kind_str})"));
 
     // DocumentSymbol may have nested children
     if let Some(children) = sym.get("children").and_then(|c| c.as_array()) {
@@ -793,7 +791,7 @@ fn path_to_uri(path: &str) -> String {
         // Drive letters need a leading slash: file:///C:/...
         format!("file:///{}", s.replace('\\', "/"))
     } else {
-        format!("file://{}", s)
+        format!("file://{s}")
     }
 }
 
@@ -816,6 +814,7 @@ fn uri_to_path(uri: &str) -> String {
 impl LspManager {
     /// Format a slice of diagnostics into a human-readable multi-line string
     /// suitable for inclusion in tool output or TUI display.
+    #[must_use]
     pub fn format_diagnostics(diagnostics: &[LspDiagnostic]) -> String {
         if diagnostics.is_empty() {
             return "No diagnostics.".to_string();
@@ -832,11 +831,11 @@ impl LspManager {
                     d.message,
                     d.source
                         .as_deref()
-                        .map(|s| format!(" ({})", s))
+                        .map(|s| format!(" ({s})"))
                         .unwrap_or_default(),
                     d.code
                         .as_deref()
-                        .map(|c| format!(" [{}]", c))
+                        .map(|c| format!(" [{c}]"))
                         .unwrap_or_default(),
                 )
             })
@@ -863,6 +862,7 @@ pub struct LspManager {
 }
 
 impl LspManager {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             configs: Vec::new(),
@@ -896,17 +896,20 @@ impl LspManager {
     }
 
     /// Return all registered server configurations.
+    #[must_use]
     pub fn servers(&self) -> &[LspServerConfig] {
         &self.configs
     }
 
     /// Look up a server configuration by name.
+    #[must_use]
     pub fn server_by_name(&self, name: &str) -> Option<&LspServerConfig> {
         self.configs.iter().find(|s| s.name == name)
     }
 
     /// Public wrapper: find the first server name that handles `file_path` based on extension.
     /// Returns `None` when no server is configured for the file's extension.
+    #[must_use]
     pub fn server_name_for_file_pub(&self, file_path: &str) -> Option<&str> {
         self.server_name_for_file(file_path)
     }
@@ -921,7 +924,7 @@ impl LspManager {
         self.extension_map
             .get(&ext)
             .and_then(|names| names.first())
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
     }
 
     /// Spawn and initialize the server for `file_path` if it is not already
@@ -993,7 +996,7 @@ impl LspManager {
         };
 
         // Skip if already opened on this server
-        if self.opened_files.get(&uri).map(|s| s.as_str()) == Some(server_name.as_str()) {
+        if self.opened_files.get(&uri).map(std::string::String::as_str) == Some(server_name.as_str()) {
             return Ok(());
         }
 
@@ -1001,9 +1004,7 @@ impl LspManager {
             Ok(c) => c,
             Err(e) => {
                 return Err(anyhow::anyhow!(
-                    "Cannot read '{}' for LSP: {}",
-                    file_path,
-                    e
+                    "Cannot read '{file_path}' for LSP: {e}"
                 ));
             }
         };
@@ -1037,13 +1038,13 @@ impl LspManager {
         let uri = path_to_uri(file_path);
         let server_name = self
             .server_name_for_file(file_path)
-            .ok_or_else(|| anyhow::anyhow!("No LSP server configured for '{}'", file_path))?
+            .ok_or_else(|| anyhow::anyhow!("No LSP server configured for '{file_path}'"))?
             .to_string();
         self.ensure_started(file_path, root_dir).await?;
         let client = self
             .clients
             .get(&server_name)
-            .ok_or_else(|| anyhow::anyhow!("LSP server '{}' not running", server_name))?;
+            .ok_or_else(|| anyhow::anyhow!("LSP server '{server_name}' not running"))?;
         client.hover(&uri, line, character).await
     }
 
@@ -1054,13 +1055,13 @@ impl LspManager {
         let uri = path_to_uri(file_path);
         let server_name = self
             .server_name_for_file(file_path)
-            .ok_or_else(|| anyhow::anyhow!("No LSP server configured for '{}'", file_path))?
+            .ok_or_else(|| anyhow::anyhow!("No LSP server configured for '{file_path}'"))?
             .to_string();
         self.ensure_started(file_path, root_dir).await?;
         let client = self
             .clients
             .get(&server_name)
-            .ok_or_else(|| anyhow::anyhow!("LSP server '{}' not running", server_name))?;
+            .ok_or_else(|| anyhow::anyhow!("LSP server '{server_name}' not running"))?;
         client.definition(&uri, line, character).await
     }
 
@@ -1071,13 +1072,13 @@ impl LspManager {
         let uri = path_to_uri(file_path);
         let server_name = self
             .server_name_for_file(file_path)
-            .ok_or_else(|| anyhow::anyhow!("No LSP server configured for '{}'", file_path))?
+            .ok_or_else(|| anyhow::anyhow!("No LSP server configured for '{file_path}'"))?
             .to_string();
         self.ensure_started(file_path, root_dir).await?;
         let client = self
             .clients
             .get(&server_name)
-            .ok_or_else(|| anyhow::anyhow!("LSP server '{}' not running", server_name))?;
+            .ok_or_else(|| anyhow::anyhow!("LSP server '{server_name}' not running"))?;
         client.references(&uri, line, character).await
     }
 
@@ -1088,17 +1089,18 @@ impl LspManager {
         let uri = path_to_uri(file_path);
         let server_name = self
             .server_name_for_file(file_path)
-            .ok_or_else(|| anyhow::anyhow!("No LSP server configured for '{}'", file_path))?
+            .ok_or_else(|| anyhow::anyhow!("No LSP server configured for '{file_path}'"))?
             .to_string();
         self.ensure_started(file_path, root_dir).await?;
         let client = self
             .clients
             .get(&server_name)
-            .ok_or_else(|| anyhow::anyhow!("LSP server '{}' not running", server_name))?;
+            .ok_or_else(|| anyhow::anyhow!("LSP server '{server_name}' not running"))?;
         client.document_symbols(&uri).await
     }
 
     /// Get cached diagnostics for `file_path` across all running servers.
+    #[must_use]
     pub fn get_diagnostics_for_file(&self, file_path: &str) -> Vec<LspDiagnostic> {
         self.clients
             .values()
@@ -1107,10 +1109,11 @@ impl LspManager {
     }
 
     /// Get all cached diagnostics from all running servers.
+    #[must_use]
     pub fn all_diagnostics(&self) -> Vec<LspDiagnostic> {
         self.clients
             .values()
-            .flat_map(|c| c.all_diagnostics())
+            .flat_map(LspClient::all_diagnostics)
             .collect()
     }
 
@@ -1118,11 +1121,10 @@ impl LspManager {
     pub async fn shutdown_all(&mut self) {
         let names: Vec<String> = self.clients.keys().cloned().collect();
         for name in names {
-            if let Some(mut client) = self.clients.remove(&name) {
-                if let Err(e) = client.shutdown().await {
+            if let Some(mut client) = self.clients.remove(&name)
+                && let Err(e) = client.shutdown().await {
                     tracing::warn!("Error shutting down LSP server '{}': {}", name, e);
                 }
-            }
         }
         self.opened_files.clear();
     }
@@ -1143,10 +1145,9 @@ impl Default for LspManager {
 // Global singleton
 // ---------------------------------------------------------------------------
 
-use once_cell::sync::Lazy;
 
-static GLOBAL_LSP_MANAGER: Lazy<Arc<tokio::sync::Mutex<LspManager>>> =
-    Lazy::new(|| Arc::new(tokio::sync::Mutex::new(LspManager::new())));
+static GLOBAL_LSP_MANAGER: std::sync::LazyLock<Arc<tokio::sync::Mutex<LspManager>>> =
+    std::sync::LazyLock::new(|| Arc::new(tokio::sync::Mutex::new(LspManager::new())));
 
 /// Access the global [`LspManager`] instance.
 pub fn global_lsp_manager() -> Arc<tokio::sync::Mutex<LspManager>> {
@@ -1283,8 +1284,8 @@ mod tests {
         d.source = Some("rust-analyzer".to_string());
         d.code = Some("E0308".to_string());
         let result = LspManager::format_diagnostics(&[d]);
-        assert!(result.contains("(rust-analyzer)"), "result = {}", result);
-        assert!(result.contains("[E0308]"), "result = {}", result);
+        assert!(result.contains("(rust-analyzer)"), "result = {result}");
+        assert!(result.contains("[E0308]"), "result = {result}");
     }
 
     #[test]
@@ -1336,8 +1337,7 @@ mod tests {
         let uri = path_to_uri("src/main.rs");
         assert!(
             uri.starts_with("file://"),
-            "expected file:// URI, got {}",
-            uri
+            "expected file:// URI, got {uri}"
         );
         let _back = uri_to_path(&uri);
     }

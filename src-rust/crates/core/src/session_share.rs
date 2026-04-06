@@ -28,7 +28,7 @@ pub async fn share_session(
 ) -> Result<String, String> {
     let req = ShareRequest {
         session_id: session_id.to_string(),
-        title: title.map(|t| t.to_string()),
+        title: title.map(std::string::ToString::to_string),
         messages: messages
             .iter()
             .map(|m| serde_json::to_value(m).unwrap_or(serde_json::Value::Null))
@@ -47,7 +47,7 @@ pub async fn share_session(
         .json(&req)
         .send()
         .await
-        .map_err(|e| format!("Failed to connect to share service: {}", e))?;
+        .map_err(|e| format!("Failed to connect to share service: {e}"))?;
 
     if !resp.status().is_success() {
         return Err(format!("Share service returned {}", resp.status()));
@@ -56,19 +56,20 @@ pub async fn share_session(
     let share: ShareResponse = resp
         .json()
         .await
-        .map_err(|e| format!("Failed to parse share response: {}", e))?;
+        .map_err(|e| format!("Failed to parse share response: {e}"))?;
 
     Ok(share.url)
 }
 
 /// Generate a simple local Markdown export of the session (fallback when
 /// no share endpoint is configured).
+#[must_use]
 pub fn export_session_text(messages: &[crate::types::Message], title: Option<&str>) -> String {
     let mut out = String::new();
 
     out.push_str("# Claurst Conversation Export\n\n");
     if let Some(t) = title {
-        out.push_str(&format!("**{}**\n\n", t));
+        out.push_str(&format!("**{t}**\n\n"));
     }
     out.push_str(&format!(
         "*Exported at {}*\n\n",
@@ -81,15 +82,15 @@ pub fn export_session_text(messages: &[crate::types::Message], title: Option<&st
             crate::types::Role::User => "**User**",
             crate::types::Role::Assistant => "**Assistant**",
         };
-        out.push_str(&format!("{}\n\n", role));
+        out.push_str(&format!("{role}\n\n"));
 
         use crate::types::MessageContent;
         match &msg.content {
-            MessageContent::Text(t) => out.push_str(&format!("{}\n\n", t)),
+            MessageContent::Text(t) => out.push_str(&format!("{t}\n\n")),
             MessageContent::Blocks(blocks) => {
                 for block in blocks {
                     if let crate::types::ContentBlock::Text { text } = block {
-                        out.push_str(&format!("{}\n\n", text));
+                        out.push_str(&format!("{text}\n\n"));
                     }
                 }
             }

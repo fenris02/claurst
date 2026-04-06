@@ -11,11 +11,13 @@ use crate::types::{ContentBlock, Message, MessageContent, Role};
 
 /// Rough token count heuristic (chars / 4 + JSON overhead).
 /// Mirrors the TS `countTokens` approximation.
+#[must_use]
 pub fn estimate_tokens(text: &str) -> u64 {
     (text.len() as f64 / 4.0).ceil() as u64
 }
 
 /// Estimate total tokens for a slice of messages.
+#[must_use]
 pub fn estimate_messages_tokens(messages: &[Message]) -> u64 {
     messages
         .iter()
@@ -31,6 +33,7 @@ pub struct ContextUsage {
 }
 
 /// Calculate context window usage.
+#[must_use]
 pub fn calculate_context_window_usage(messages: &[Message], model: &str) -> ContextUsage {
     let used = estimate_messages_tokens(messages);
     let total = context_window_for_model(model);
@@ -43,6 +46,7 @@ pub fn calculate_context_window_usage(messages: &[Message], model: &str) -> Cont
 }
 
 /// Return the context window token limit for a known model.
+#[must_use]
 pub fn context_window_for_model(model: &str) -> u64 {
     if model.contains("claude-3-5-haiku") {
         return 200_000;
@@ -73,6 +77,7 @@ pub fn context_window_for_model(model: &str) -> u64 {
 // ---------------------------------------------------------------------------
 
 /// Extract all displayable text from a message.
+#[must_use]
 pub fn get_message_text(msg: &Message) -> String {
     match &msg.content {
         MessageContent::Text(s) => s.clone(),
@@ -88,7 +93,8 @@ pub fn get_message_text(msg: &Message) -> String {
     }
 }
 
-/// Returns `true` if the message is a tool-use turn (assistant with tool_use blocks).
+/// Returns `true` if the message is a tool-use turn (assistant with `tool_use` blocks).
+#[must_use]
 pub fn is_tool_use_message(msg: &Message) -> bool {
     msg.role == Role::Assistant
         && match &msg.content {
@@ -100,6 +106,7 @@ pub fn is_tool_use_message(msg: &Message) -> bool {
 }
 
 /// Returns `true` if the message is a tool-result turn.
+#[must_use]
 pub fn is_tool_result_message(msg: &Message) -> bool {
     msg.role == Role::User
         && match &msg.content {
@@ -111,16 +118,16 @@ pub fn is_tool_result_message(msg: &Message) -> bool {
 }
 
 /// Merge consecutive `Text` blocks in a content array.
+#[must_use]
 pub fn merge_consecutive_text_blocks(blocks: Vec<ContentBlock>) -> Vec<ContentBlock> {
     let mut result: Vec<ContentBlock> = Vec::new();
     for block in blocks {
-        if let ContentBlock::Text { text } = &block {
-            if let Some(ContentBlock::Text { text: prev_text }) = result.last_mut() {
+        if let ContentBlock::Text { text } = &block
+            && let Some(ContentBlock::Text { text: prev_text }) = result.last_mut() {
                 prev_text.push('\n');
                 prev_text.push_str(text);
                 continue;
             }
-        }
         result.push(block);
     }
     result
@@ -137,18 +144,18 @@ pub fn truncate_message_content(msg: &mut Message, max_chars: usize) {
         }
         MessageContent::Blocks(blocks) => {
             for block in blocks.iter_mut() {
-                if let ContentBlock::Text { text } = block {
-                    if text.len() > max_chars {
+                if let ContentBlock::Text { text } = block
+                    && text.len() > max_chars {
                         text.truncate(max_chars);
                         text.push_str("\u{2026}[truncated]");
                     }
-                }
             }
         }
     }
 }
 
 /// Format a tool result value for display / history.
+#[must_use]
 pub fn format_tool_result(result: &Value) -> String {
     match result {
         Value::String(s) => s.clone(),
@@ -157,7 +164,7 @@ pub fn format_tool_result(result: &Value) -> String {
             .filter_map(|v| {
                 v.get("text")
                     .and_then(|t| t.as_str())
-                    .map(|s| s.to_string())
+                    .map(std::string::ToString::to_string)
             })
             .collect::<Vec<_>>()
             .join("\n"),
