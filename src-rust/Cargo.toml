@@ -102,7 +102,7 @@ missing_safety_doc               = "warn"
 async-stream = "0.3"
 async-trait  = "0.1"
 futures      = "0.3"
-tokio        = { version = "1.44", features = ["full"] }
+tokio        = { version = "1.51", features = ["full"] }
 tokio-stream = "0.1"
 
 # HTTP
@@ -186,6 +186,7 @@ tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 schemars = { version = "0.8", features = ["derive"] }
 
 # Workspace crates
+arboard          = { version = "3", default-features = false }
 claurst-acp      = { path = "crates/acp" }
 claurst-api      = { path = "crates/api" }
 claurst-bridge   = { path = "crates/bridge" }
@@ -197,3 +198,10 @@ claurst-plugins  = { path = "crates/plugins" }
 claurst-query    = { path = "crates/query" }
 claurst-tools    = { path = "crates/tools" }
 claurst-tui      = { path = "crates/tui" }
+cpal             = "0.15"
+hmac             = "0.12"
+hostname         = "0.4"
+hound            = "3.5"
+portable-pty     = "0.9"
+xxhash-rust      = "0.8"
+zip              = { version = "2", default-features = false }

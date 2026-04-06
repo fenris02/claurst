@@ -12,7 +12,7 @@ workspace = true
 [dependencies]
 anyhow       = { workspace = true }
 chrono       = { workspace = true }
-claurst-core = { path = "../core" }
+claurst-core = { workspace = true }
 hex          = { workspace = true }
 serde        = { workspace = true }
 serde_json   = { workspace = true }

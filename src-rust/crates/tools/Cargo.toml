@@ -43,7 +43,7 @@ which        = { workspace = true }
 xcap         = { workspace = true, optional = true }
 
 # PTY support — used by PtyBashTool on Unix
-portable-pty = "0.9"
+portable-pty = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true }

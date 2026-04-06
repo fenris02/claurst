@@ -15,7 +15,7 @@ ultraplan = ["claurst-core/ultraplan"]
 
 [dependencies]
 anyhow            = { workspace = true }
-arboard           = { version = "3", default-features = false }
+arboard           = { workspace = true }
 async-trait       = { workspace = true }
 base64            = { workspace = true }
 chrono            = { workspace = true }
@@ -29,7 +29,7 @@ claurst-tools     = { workspace = true }
 claurst-tui       = { workspace = true }
 dirs              = { workspace = true }
 futures           = { workspace = true }
-hostname          = "0.4"
+hostname          = { workspace = true }
 once_cell         = { workspace = true }
 open              = { workspace = true }
 parking_lot       = { workspace = true }
@@ -40,6 +40,6 @@ serde             = { workspace = true }
 serde_json        = { workspace = true }
 tempfile          = { workspace = true }
 tokio             = { workspace = true }
-tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+tokio-tungstenite = { workspace = true, features = ["native-tls"] }
 tracing           = { workspace = true }
 urlencoding       = { workspace = true }

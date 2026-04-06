@@ -45,7 +45,7 @@ sha2 = { workspace = true }
 urlencoding = { workspace = true }
 
 # Zip extraction for plugin archives
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { workspace = true, features = ["deflate"] }
 
 # Utilities
 once_cell   = { workspace = true }

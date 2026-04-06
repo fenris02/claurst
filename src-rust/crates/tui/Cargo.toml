@@ -55,39 +55,35 @@ tree_sitter_bash_shadow      = ["claurst-core/tree_sitter_bash_shadow"]
 unattended_retry             = ["claurst-core/unattended_retry"]
 
 [dependencies]
-anyhow = { workspace = true }
-base64 = { workspace = true }
-chrono = { workspace = true }
-claurst-api = { workspace = true }
-claurst-core = { workspace = true }
-claurst-mcp = { workspace = true }
+anyhow        = { workspace = true }
+base64        = { workspace = true }
+chrono        = { workspace = true }
+claurst-api   = { workspace = true }
+claurst-core  = { workspace = true }
+claurst-mcp   = { workspace = true }
 claurst-query = { workspace = true }
 claurst-tools = { workspace = true }
-crossterm = { workspace = true }
-dashmap = { workspace = true }
-dirs = { workspace = true }
-futures = { workspace = true }
-icy_sixel = { workspace = true }
-image = { workspace = true }
-once_cell = { workspace = true }
-parking_lot = { workspace = true }
-ratatui = { workspace = true }
-regex = { workspace = true }
-reqwest = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-similar = { workspace = true }
-syntect = { version = "5", default-features = false, features = [
-  "default-syntaxes",
-  "default-themes",
-  "regex-fancy",
-] }
-tokio = { workspace = true }
-tracing = { workspace = true }
+crossterm     = { workspace = true }
+dashmap       = { workspace = true }
+dirs          = { workspace = true }
+futures       = { workspace = true }
+icy_sixel     = { workspace = true }
+image         = { workspace = true }
+once_cell     = { workspace = true }
+parking_lot   = { workspace = true }
+ratatui       = { workspace = true }
+regex         = { workspace = true }
+reqwest       = { workspace = true }
+serde         = { workspace = true }
+serde_json    = { workspace = true }
+similar       = { workspace = true }
+syntect       = { workspace = true, features = ["default-syntaxes", "default-themes", "regex-fancy"] }
+tokio         = { workspace = true }
+tracing       = { workspace = true }
 unicode-width = { workspace = true }
 # Optional audio capture for voice PTT (gated behind the `voice` feature)
-cpal  = { version = "0.15", optional = true }
-hound = { version = "3.5", optional = true }
+cpal  = { workspace = true, optional = true }
+hound = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

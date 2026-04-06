@@ -129,7 +129,7 @@ url               = { workspace = true }
 urlencoding       = { workspace = true }
 uuid              = { workspace = true }
 # Optional: real audio capture for voice input (gated behind the `voice` feature)
-cpal = { version = "0.15", optional = true }
+cpal = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

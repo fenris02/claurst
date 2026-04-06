@@ -20,7 +20,7 @@ claurst-query = { workspace = true }
 dirs          = { workspace = true }
 futures       = { workspace = true }
 hex           = { workspace = true }
-hostname      = "0.4"
+hostname      = { workspace = true }
 parking_lot   = { workspace = true }
 regex         = { workspace = true }
 reqwest       = { workspace = true }
