@@ -4,9 +4,12 @@
 //! cacheable (static) sections are placed before `SYSTEM_PROMPT_DYNAMIC_BOUNDARY`;
 //! volatile, session-specific sections follow it.
 
+use std::{
+    collections::HashMap,
+    sync::{Mutex, OnceLock},
+};
+
 use serde::{Deserialize, Serialize};
-use std::sync::{Mutex, OnceLock};
-use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // Dynamic boundary marker
@@ -47,7 +50,11 @@ pub struct SystemPromptSection {
 impl SystemPromptSection {
     /// Create a memoizable (cacheable) section.
     pub fn cached(tag: &'static str, content: impl Into<String>) -> Self {
-        Self { tag, content: Some(content.into()), cache_break: false }
+        Self {
+            tag,
+            content: Some(content.into()),
+            cache_break: false,
+        }
     }
 
     /// Create a volatile section that re-evaluates every turn.
@@ -97,9 +104,9 @@ impl OutputStyle {
                 "Be maximally concise. Skip preamble, summaries, and filler. \
                 Lead with the answer. One sentence is better than three.",
             ),
-            OutputStyle::Formal => Some(
-                "Maintain a formal, professional tone. Use precise technical language.",
-            ),
+            OutputStyle::Formal => {
+                Some("Maintain a formal, professional tone. Use precise technical language.")
+            }
             OutputStyle::Casual => Some("Use a casual, conversational tone."),
             OutputStyle::Default => None,
         }
@@ -180,9 +187,7 @@ impl SystemPromptPrefix {
                 "You are Claurst, Anthropic's official CLI for Claude, \
                 running within the Claude Agent SDK."
             }
-            Self::Sdk => {
-                "You are a Claude agent, built on Anthropic's Claude Agent SDK."
-            }
+            Self::Sdk => "You are a Claude agent, built on Anthropic's Claude Agent SDK.",
         }
     }
 }
@@ -240,14 +245,9 @@ pub fn build_system_prompt(opts: &SystemPromptOptions) -> String {
         }
     }
 
-    let prefix = opts
-        .prefix
-        .unwrap_or_else(|| {
-            SystemPromptPrefix::detect(
-                opts.is_non_interactive,
-                opts.has_append_system_prompt,
-            )
-        });
+    let prefix = opts.prefix.unwrap_or_else(|| {
+        SystemPromptPrefix::detect(opts.is_non_interactive, opts.has_append_system_prompt)
+    });
 
     let mut parts: Vec<String> = Vec::new();
 
@@ -315,10 +315,7 @@ pub fn build_system_prompt(opts: &SystemPromptOptions) -> String {
 
     // 12. Memory injection (from memdir)
     if !opts.memory_content.is_empty() {
-        parts.push(format!(
-            "\n<memory>\n{}\n</memory>",
-            opts.memory_content
-        ));
+        parts.push(format!("\n<memory>\n{}\n</memory>", opts.memory_content));
     }
 
     // 13. Appended system prompt (--append-system-prompt)
@@ -391,7 +388,10 @@ fn build_env_info_section(working_dir: Option<&str>) -> String {
 
     // Shell line: on Windows add Unix syntax note
     let shell_line = if cfg!(target_os = "windows") {
-        format!("Shell: {} (use Unix shell syntax, not Windows — e.g., /dev/null not NUL, forward slashes in paths)", shell_name)
+        format!(
+            "Shell: {} (use Unix shell syntax, not Windows — e.g., /dev/null not NUL, forward slashes in paths)",
+            shell_name
+        )
     } else {
         format!("Shell: {}", shell_name)
     };
@@ -546,7 +546,10 @@ mod tests {
     #[test]
     fn test_default_prompt_contains_attribution() {
         let prompt = build_system_prompt(&default_opts());
-        assert!(prompt.contains("Claurst"), "Default prompt must contain attribution");
+        assert!(
+            prompt.contains("Claurst"),
+            "Default prompt must contain attribution"
+        );
     }
 
     #[test]

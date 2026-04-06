@@ -10,24 +10,24 @@
 // cc-tools cannot depend on cc-query (that would be circular: cc-query already
 // depends on cc-tools).  We therefore use a dependency-injection pattern:
 //
-//   1. cc-tools exposes `register_agent_runner(f)` which stores a callable in a
-//      process-global slot.
-//   2. cc-query calls `register_agent_runner` at process startup, passing a
-//      closure that invokes `run_query_loop`.
+//   1. cc-tools exposes `register_agent_runner(f)` which stores a callable in a process-global
+//      slot.
+//   2. cc-query calls `register_agent_runner` at process startup, passing a closure that invokes
+//      `run_query_loop`.
 //   3. TeamCreateTool calls `run_agent(...)` which dispatches through that slot.
 //
 // This keeps the module self-contained and avoids any extra crate boundary.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
+use std::{future::Future, pin::Pin, sync::Arc};
+
 use async_trait::async_trait;
 use futures::future::join_all;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
+use serde_json::{Value, json};
 use uuid::Uuid;
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 // ---------------------------------------------------------------------------
 // Global agent-runner injection
@@ -46,12 +46,12 @@ use uuid::Uuid;
 /// Returns the agent's final text output.
 pub type AgentRunFn = Arc<
     dyn Fn(
-            String,                // description
-            String,                // prompt
-            Option<Vec<String>>,   // tools allowlist
-            Option<String>,        // system prompt
-            Option<u32>,           // max_turns
-            Arc<ToolContext>,      // context
+            String,              // description
+            String,              // prompt
+            Option<Vec<String>>, // tools allowlist
+            Option<String>,      // system prompt
+            Option<u32>,         // max_turns
+            Arc<ToolContext>,    // context
         ) -> Pin<Box<dyn Future<Output = String> + Send>>
         + Send
         + Sync,
@@ -74,12 +74,8 @@ pub fn register_agent_runner(f: AgentRunFn) {
 /// Falls back to a stub result when no runner has been registered (e.g., in
 /// unit tests that don't initialise cc-query).
 async fn run_agent(
-    description: String,
-    prompt: String,
-    tools: Option<Vec<String>>,
-    system: Option<String>,
-    max_turns: Option<u32>,
-    ctx: Arc<ToolContext>,
+    description: String, prompt: String, tools: Option<Vec<String>>, system: Option<String>,
+    max_turns: Option<u32>, ctx: Arc<ToolContext>,
 ) -> String {
     if let Some(runner) = AGENT_RUNNER.get() {
         runner(description, prompt, tools, system, max_turns, ctx).await
@@ -99,8 +95,7 @@ use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use tokio_util::sync::CancellationToken;
 
-static ACTIVE_TEAMS: Lazy<DashMap<String, Vec<CancellationToken>>> =
-    Lazy::new(DashMap::new);
+static ACTIVE_TEAMS: Lazy<DashMap<String, Vec<CancellationToken>>> = Lazy::new(DashMap::new);
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -387,10 +382,7 @@ impl Tool for TeamCreateTool {
                 let agent_name = spec.name.clone();
                 let role = spec.role.clone().unwrap_or_else(|| "assistant".to_string());
                 let tools = spec.tools.clone();
-                let agent_task = spec
-                    .task
-                    .clone()
-                    .unwrap_or_else(|| params.task.clone());
+                let agent_task = spec.task.clone().unwrap_or_else(|| params.task.clone());
                 let team_name_inner = final_name.clone();
                 let cancel = cancel_tokens[i].clone();
                 let ctx_inner = ctx_arc.clone();

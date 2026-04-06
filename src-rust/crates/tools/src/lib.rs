@@ -3,91 +3,101 @@
 // Each tool maps to a capability the LLM can invoke: running shell commands,
 // reading/writing/editing files, searching codebases, fetching web pages, etc.
 
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
+
 use async_trait::async_trait;
-use claurst_core::config::PermissionMode;
-use claurst_core::cost::CostTracker;
-use claurst_core::permissions::{PermissionDecision, PermissionHandler, PermissionRequest};
-use claurst_core::types::ToolDefinition;
+use claurst_core::{
+    config::PermissionMode,
+    cost::CostTracker,
+    permissions::{PermissionDecision, PermissionHandler, PermissionRequest},
+    types::ToolDefinition,
+};
 use serde_json::Value;
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
 
 // Sub-modules – each contains a full tool implementation.
+pub mod apply_patch;
 pub mod ask_user;
 pub mod bash;
-pub mod pty_bash;
+pub mod batch_edit;
 pub mod brief;
+pub mod bundled_skills;
+pub mod computer_use;
 pub mod config_tool;
 pub mod cron;
 pub mod enter_plan_mode;
 pub mod exit_plan_mode;
-pub mod apply_patch;
-pub mod batch_edit;
 pub mod file_edit;
 pub mod file_read;
 pub mod file_write;
+pub mod formatter;
 pub mod glob_tool;
 pub mod grep_tool;
 pub mod lsp_tool;
+pub mod mcp_auth_tool;
 pub mod mcp_resources;
-pub mod todo_write;
 pub mod notebook_edit;
 pub mod powershell;
+pub mod pty_bash;
+pub mod remote_trigger;
+pub mod repl_tool;
 pub mod send_message;
-pub mod bundled_skills;
 pub mod skill_tool;
 pub mod sleep;
+pub mod synthetic_output;
 pub mod tasks;
+pub mod team_tool;
+pub mod todo_write;
 pub mod tool_search;
 pub mod web_fetch;
 pub mod web_search;
 pub mod worktree;
-pub mod computer_use;
-pub mod mcp_auth_tool;
-pub mod repl_tool;
-pub mod synthetic_output;
-pub mod team_tool;
-pub mod remote_trigger;
-pub mod formatter;
 
 // Re-exports for convenience.
-pub use formatter::try_format_file;
+pub use apply_patch::ApplyPatchTool;
 pub use ask_user::AskUserQuestionTool;
 pub use bash::BashTool;
-pub use pty_bash::PtyBashTool;
+pub use batch_edit::BatchEditTool;
 pub use brief::BriefTool;
+pub use computer_use::ComputerUseTool;
 pub use config_tool::ConfigTool;
 pub use cron::{CronCreateTool, CronDeleteTool, CronListTool};
 pub use enter_plan_mode::EnterPlanModeTool;
 pub use exit_plan_mode::ExitPlanModeTool;
-pub use apply_patch::ApplyPatchTool;
-pub use batch_edit::BatchEditTool;
 pub use file_edit::FileEditTool;
 pub use file_read::FileReadTool;
 pub use file_write::FileWriteTool;
+pub use formatter::try_format_file;
 pub use glob_tool::GlobTool;
 pub use grep_tool::GrepTool;
 pub use lsp_tool::LspTool;
+pub use mcp_auth_tool::McpAuthTool;
 pub use mcp_resources::{ListMcpResourcesTool, ReadMcpResourceTool};
-pub use todo_write::TodoWriteTool;
 pub use notebook_edit::NotebookEditTool;
 pub use powershell::PowerShellTool;
+pub use pty_bash::PtyBashTool;
+pub use remote_trigger::RemoteTriggerTool;
+pub use repl_tool::ReplTool;
 pub use send_message::{SendMessageTool, drain_inbox, peek_inbox};
 pub use skill_tool::SkillTool;
 pub use sleep::SleepTool;
-pub use tasks::{TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool, TaskUpdateTool, Task, TaskStatus, TASK_STORE};
+pub use synthetic_output::SyntheticOutputTool;
+pub use tasks::{
+    TASK_STORE, Task, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStatus,
+    TaskStopTool, TaskUpdateTool,
+};
+pub use team_tool::{AgentRunFn, TeamCreateTool, TeamDeleteTool, register_agent_runner};
+pub use todo_write::TodoWriteTool;
 pub use tool_search::ToolSearchTool;
 pub use web_fetch::WebFetchTool;
 pub use web_search::WebSearchTool;
 pub use worktree::{EnterWorktreeTool, ExitWorktreeTool};
-pub use computer_use::ComputerUseTool;
-pub use mcp_auth_tool::McpAuthTool;
-pub use repl_tool::ReplTool;
-pub use synthetic_output::SyntheticOutputTool;
-pub use team_tool::{TeamCreateTool, TeamDeleteTool, register_agent_runner, AgentRunFn};
-pub use remote_trigger::RemoteTriggerTool;
 
 // ---------------------------------------------------------------------------
 // Core trait & types
@@ -170,13 +180,15 @@ impl ShellState {
 /// Process-global registry of shell states keyed by session_id.
 /// This lets us persist cwd/env across Bash invocations without changing
 /// the `ToolContext` struct (which is constructed in places we cannot modify).
-static SHELL_STATE_REGISTRY: once_cell::sync::Lazy<dashmap::DashMap<String, Arc<parking_lot::Mutex<ShellState>>>> =
-    once_cell::sync::Lazy::new(dashmap::DashMap::new);
+static SHELL_STATE_REGISTRY: once_cell::sync::Lazy<
+    dashmap::DashMap<String, Arc<parking_lot::Mutex<ShellState>>>,
+> = once_cell::sync::Lazy::new(dashmap::DashMap::new);
 
 /// Process-global registry of `SnapshotManager` instances keyed by session_id.
 /// Used by tools to record pre-write snapshots and by `/undo` to revert them.
-static SNAPSHOT_REGISTRY: once_cell::sync::Lazy<dashmap::DashMap<String, Arc<parking_lot::Mutex<claurst_core::SnapshotManager>>>> =
-    once_cell::sync::Lazy::new(dashmap::DashMap::new);
+static SNAPSHOT_REGISTRY: once_cell::sync::Lazy<
+    dashmap::DashMap<String, Arc<parking_lot::Mutex<claurst_core::SnapshotManager>>>,
+> = once_cell::sync::Lazy::new(dashmap::DashMap::new);
 
 /// Return the persistent `ShellState` for the given session, creating one if needed.
 pub fn session_shell_state(session_id: &str) -> Arc<parking_lot::Mutex<ShellState>> {
@@ -192,7 +204,9 @@ pub fn clear_session_shell_state(session_id: &str) {
 }
 
 /// Return the persistent `SnapshotManager` for the given session, creating one if needed.
-pub fn session_snapshot(session_id: &str) -> Arc<parking_lot::Mutex<claurst_core::SnapshotManager>> {
+pub fn session_snapshot(
+    session_id: &str,
+) -> Arc<parking_lot::Mutex<claurst_core::SnapshotManager>> {
     SNAPSHOT_REGISTRY
         .entry(session_id.to_string())
         .or_insert_with(|| Arc::new(parking_lot::Mutex::new(claurst_core::SnapshotManager::new())))
@@ -235,10 +249,7 @@ impl ToolContext {
 
     /// Check permissions for a tool invocation.
     pub fn check_permission(
-        &self,
-        tool_name: &str,
-        description: &str,
-        is_read_only: bool,
+        &self, tool_name: &str, description: &str, is_read_only: bool,
     ) -> Result<(), claurst_core::error::ClaudeError> {
         let request = PermissionRequest {
             tool_name: tool_name.to_string(),
@@ -263,11 +274,7 @@ impl ToolContext {
     /// Used by PowerShellTool (and any future tool) when it needs to show
     /// the user *why* a command is considered risky before they approve it.
     pub fn check_permission_with_details(
-        &self,
-        tool_name: &str,
-        description: &str,
-        details: &str,
-        is_read_only: bool,
+        &self, tool_name: &str, description: &str, details: &str, is_read_only: bool,
     ) -> Result<(), claurst_core::error::ClaudeError> {
         let request = PermissionRequest {
             tool_name: tool_name.to_string(),
@@ -291,11 +298,7 @@ impl ToolContext {
     }
 
     pub fn record_file_change(
-        &self,
-        path: PathBuf,
-        before_content: &[u8],
-        after_content: &[u8],
-        tool_name: &str,
+        &self, path: PathBuf, before_content: &[u8], after_content: &[u8], tool_name: &str,
     ) {
         self.file_history.lock().record_modification(
             path,
@@ -404,7 +407,10 @@ mod tests {
     #[test]
     fn test_all_tools_non_empty() {
         let tools = all_tools();
-        assert!(!tools.is_empty(), "all_tools() must return at least one tool");
+        assert!(
+            !tools.is_empty(),
+            "all_tools() must return at least one tool"
+        );
     }
 
     #[test]
@@ -470,9 +476,16 @@ mod tests {
     #[test]
     fn test_core_tools_present() {
         let expected = [
-            "Bash", "Read", "Edit", "Write", "Glob", "Grep",
-            "WebFetch", "WebSearch",
-            "TodoWrite", "Skill",
+            "Bash",
+            "Read",
+            "Edit",
+            "Write",
+            "Glob",
+            "Grep",
+            "WebFetch",
+            "WebSearch",
+            "TodoWrite",
+            "Skill",
         ];
         for name in &expected {
             assert!(
@@ -513,8 +526,7 @@ mod tests {
 
     #[test]
     fn test_resolve_path_absolute() {
-        use claurst_core::config::Config;
-        use claurst_core::permissions::AutoPermissionHandler;
+        use claurst_core::{config::Config, permissions::AutoPermissionHandler};
 
         let handler = Arc::new(AutoPermissionHandler {
             mode: claurst_core::config::PermissionMode::Default,
@@ -541,8 +553,7 @@ mod tests {
 
     #[test]
     fn test_resolve_path_relative() {
-        use claurst_core::config::Config;
-        use claurst_core::permissions::AutoPermissionHandler;
+        use claurst_core::{config::Config, permissions::AutoPermissionHandler};
 
         let handler = Arc::new(AutoPermissionHandler {
             mode: claurst_core::config::PermissionMode::Default,

@@ -80,13 +80,14 @@ impl RemoteSessionManager {
 
     /// Push a transcript entry to the cloud for `session_id`.
     pub async fn push_transcript_entry(
-        &self,
-        session_id: &str,
-        entry_json: &str,
+        &self, session_id: &str, entry_json: &str,
     ) -> Result<(), String> {
         let client = reqwest::Client::new();
         let resp = client
-            .post(format!("{}/api/sessions/{}/messages", self.base_url, session_id))
+            .post(format!(
+                "{}/api/sessions/{}/messages",
+                self.base_url, session_id
+            ))
             .header("Authorization", format!("Bearer {}", self.access_token))
             .header("Content-Type", "application/json")
             .body(entry_json.to_string())
@@ -103,9 +104,7 @@ impl RemoteSessionManager {
     /// Start background sync loop: pushes local transcript to cloud every 30s.
     /// Returns a JoinHandle; caller should keep it alive.
     pub fn start_background_sync(
-        self: std::sync::Arc<Self>,
-        session_id: String,
-        transcript_path: std::path::PathBuf,
+        self: std::sync::Arc<Self>, session_id: String, transcript_path: std::path::PathBuf,
     ) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
@@ -150,10 +149,7 @@ impl SessionsWebSocket {
 
     /// Connect to the sessions WebSocket, emit events, and reconnect on disconnect.
     /// Runs until the sender is dropped or the task is cancelled.
-    pub async fn connect(
-        &self,
-        event_tx: mpsc::Sender<SessionEvent>,
-    ) -> Result<(), String> {
+    pub async fn connect(&self, event_tx: mpsc::Sender<SessionEvent>) -> Result<(), String> {
         let mut backoff_secs: u64 = 1;
         loop {
             match self.run_once(&event_tx).await {
@@ -181,7 +177,10 @@ impl SessionsWebSocket {
             self.ws_url,
             urlencoding::encode(&self.access_token)
         );
-        let request = url.as_str().into_client_request().map_err(|e| e.to_string())?;
+        let request = url
+            .as_str()
+            .into_client_request()
+            .map_err(|e| e.to_string())?;
 
         let (ws_stream, _) = connect_async(request).await.map_err(|e| e.to_string())?;
         tracing::info!(url = %self.ws_url, "SessionsWebSocket: connected");

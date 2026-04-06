@@ -6,13 +6,15 @@
 //! feature is disabled the recorder still compiles but `start_recording` returns
 //! an error immediately rather than attempting hardware access.
 
-use crate::oauth::OAuthTokens;
-use serde::{Deserialize, Serialize};
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
 };
+
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
+
+use crate::oauth::OAuthTokens;
 
 // ---------------------------------------------------------------------------
 // Availability (OAuth / kill-switch)
@@ -40,7 +42,9 @@ pub enum VoiceAvailability {
     /// Feature flag not enabled in this build
     NotEnabled,
     /// No microphone / audio device available on this system
-    NoMicrophone { reason: String },
+    NoMicrophone {
+        reason: String,
+    },
     /// Voice input is enabled but the user has toggled it off
     ToggledOff,
 }
@@ -57,8 +61,7 @@ impl VoiceAvailability {
         match self {
             VoiceAvailability::Available => None,
             VoiceAvailability::RequiresOAuth => Some(
-                "Voice mode requires OAuth authentication. Run /login to authenticate."
-                    .to_string(),
+                "Voice mode requires OAuth authentication. Run /login to authenticate.".to_string(),
             ),
             VoiceAvailability::MissingScopes { required, have } => Some(format!(
                 "Voice mode requires scopes: {}. Your token has: {}",
@@ -69,16 +72,14 @@ impl VoiceAvailability {
                     have.join(", ")
                 }
             )),
-            VoiceAvailability::Disabled => {
-                Some("Voice mode is currently disabled.".to_string())
-            }
+            VoiceAvailability::Disabled => Some("Voice mode is currently disabled.".to_string()),
             VoiceAvailability::NotEnabled => {
                 Some("Voice mode is not enabled in this build.".to_string())
             }
             VoiceAvailability::NoMicrophone { reason } => Some(reason.clone()),
-            VoiceAvailability::ToggledOff => Some(
-                "Voice input is disabled. Run /voice to enable.".to_string(),
-            ),
+            VoiceAvailability::ToggledOff => {
+                Some("Voice input is disabled. Run /voice to enable.".to_string())
+            }
         }
     }
 }
@@ -220,8 +221,7 @@ impl VoiceRecorder {
     /// Tokio tasks that stay alive until `stop_recording` is called (or the
     /// recorder is dropped).
     pub async fn start_recording(
-        &mut self,
-        event_tx: mpsc::Sender<VoiceEvent>,
+        &mut self, event_tx: mpsc::Sender<VoiceEvent>,
     ) -> anyhow::Result<()> {
         if self.is_recording.load(Ordering::SeqCst) {
             return Ok(());
@@ -310,14 +310,11 @@ fn platform_no_mic_message() -> String {
 /// Captures audio while `is_recording` is `true`, then transcribes and sends
 /// the result over `event_tx`.
 async fn record_and_transcribe(
-    is_recording: Arc<AtomicBool>,
-    event_tx: mpsc::Sender<VoiceEvent>,
-    config: VoiceConfig,
+    is_recording: Arc<AtomicBool>, event_tx: mpsc::Sender<VoiceEvent>, config: VoiceConfig,
 ) -> anyhow::Result<()> {
     #[cfg(feature = "voice")]
     {
-        let (samples, sample_rate) =
-            record_audio(is_recording, event_tx.clone()).await?;
+        let (samples, sample_rate) = record_audio(is_recording, event_tx.clone()).await?;
 
         let _ = event_tx.send(VoiceEvent::RecordingStopped).await;
 
@@ -361,7 +358,8 @@ async fn record_and_transcribe(
     {
         let _ = is_recording;
         let _ = config;
-        let msg = "Voice recording is not available in this build (compile with --features voice).".to_string();
+        let msg = "Voice recording is not available in this build (compile with --features voice)."
+            .to_string();
         let _ = event_tx.send(VoiceEvent::Error(msg.clone())).await;
         Err(anyhow::anyhow!(msg))
     }
@@ -373,11 +371,11 @@ async fn record_and_transcribe(
 
 #[cfg(feature = "voice")]
 async fn record_audio(
-    is_recording: Arc<AtomicBool>,
-    event_tx: mpsc::Sender<VoiceEvent>,
+    is_recording: Arc<AtomicBool>, event_tx: mpsc::Sender<VoiceEvent>,
 ) -> anyhow::Result<(Vec<f32>, u32)> {
-    use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use std::time::Duration;
+
+    use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
     let host = cpal::default_host();
     let device = host
@@ -402,8 +400,7 @@ async fn record_audio(
                     s.extend_from_slice(data);
                 } else {
                     for chunk in data.chunks(channels) {
-                        let mono =
-                            chunk.iter().copied().sum::<f32>() / channels as f32;
+                        let mono = chunk.iter().copied().sum::<f32>() / channels as f32;
                         s.push(mono);
                     }
                 }
@@ -476,17 +473,12 @@ fn encode_wav(samples: &[f32], sample_rate: u32) -> anyhow::Result<Vec<u8>> {
 /// transcript text.
 #[cfg_attr(not(feature = "voice"), allow(dead_code))]
 async fn transcribe_audio(
-    audio_samples: &[f32],
-    sample_rate: u32,
-    api_key: &str,
-    language: Option<&str>,
-    model: &str,
+    audio_samples: &[f32], sample_rate: u32, api_key: &str, language: Option<&str>, model: &str,
     endpoint_url: Option<&str>,
 ) -> anyhow::Result<String> {
     let wav_data = encode_wav(audio_samples, sample_rate)?;
 
-    let url = endpoint_url
-        .unwrap_or("https://api.openai.com/v1/audio/transcriptions");
+    let url = endpoint_url.unwrap_or("https://api.openai.com/v1/audio/transcriptions");
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(60))
@@ -522,11 +514,7 @@ async fn transcribe_audio(
     }
 
     let json: serde_json::Value = response.json().await?;
-    let text = json["text"]
-        .as_str()
-        .unwrap_or("")
-        .trim()
-        .to_string();
+    let text = json["text"].as_str().unwrap_or("").trim().to_string();
     Ok(text)
 }
 
@@ -553,8 +541,9 @@ pub fn global_voice_recorder() -> Arc<Mutex<VoiceRecorder>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::Mutex;
+
+    use super::*;
 
     /// Serialize all tests that read or write `KILL_SWITCH_ENV` so they don't
     /// interfere with each other when the test runner runs them in parallel.

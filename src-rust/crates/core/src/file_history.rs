@@ -4,9 +4,12 @@
 //! Tracks which files were modified by tool calls in the current session,
 //! enabling the /rewind command to restore files to earlier states.
 
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
+
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,11 +69,7 @@ impl FileHistory {
 
     /// Record that `tool_name` modified `path` from `before_content` to `after_content`.
     pub fn record_modification(
-        &mut self,
-        path: PathBuf,
-        before_content: &[u8],
-        after_content: &[u8],
-        turn_index: usize,
+        &mut self, path: PathBuf, before_content: &[u8], after_content: &[u8], turn_index: usize,
         tool_name: &str,
     ) {
         let before_hash = sha256_hex(before_content);

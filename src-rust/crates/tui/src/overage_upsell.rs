@@ -4,11 +4,13 @@
 // to add credits to continue. Rendered as a dismissable banner at the top of
 // the message area.
 
-use ratatui::buffer::Buffer;
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, Paragraph, Widget},
+};
 
 // ---------------------------------------------------------------------------
 // State
@@ -121,8 +123,9 @@ pub fn render_overage_upsell(state: &OverageCreditUpsellState, area: Rect, buf: 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ratatui::layout::Rect;
+
+    use super::*;
 
     #[test]
     fn overage_upsell_show_hide() {
@@ -150,10 +153,20 @@ mod tests {
     fn overage_upsell_render_smoke() {
         let mut state = OverageCreditUpsellState::new();
         state.show(250);
-        let area = Rect { x: 0, y: 0, width: 80, height: 6 };
+        let area = Rect {
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 6,
+        };
         let mut buf = ratatui::buffer::Buffer::empty(area);
         render_overage_upsell(&state, area, &mut buf);
-        let rendered = buf.content.iter().map(|c| c.symbol()).collect::<Vec<_>>().join("");
+        let rendered = buf
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<Vec<_>>()
+            .join("");
         assert!(rendered.contains("Overage Alert"));
         assert!(rendered.contains("credits"));
     }
@@ -161,10 +174,20 @@ mod tests {
     #[test]
     fn overage_upsell_not_rendered_when_invisible() {
         let state = OverageCreditUpsellState::new();
-        let area = Rect { x: 0, y: 0, width: 80, height: 6 };
+        let area = Rect {
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 6,
+        };
         let mut buf = ratatui::buffer::Buffer::empty(area);
         render_overage_upsell(&state, area, &mut buf);
-        let rendered = buf.content.iter().map(|c| c.symbol()).collect::<Vec<_>>().join("");
+        let rendered = buf
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<Vec<_>>()
+            .join("");
         assert!(!rendered.contains("Overage"));
     }
 }

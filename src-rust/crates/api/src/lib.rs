@@ -3,20 +3,22 @@
 //
 // Handles:
 // - POST /v1/messages with streaming
-// - SSE event parsing (message_start, content_block_start, content_block_delta,
-//   content_block_stop, message_delta, message_stop, error)
+// - SSE event parsing (message_start, content_block_start, content_block_delta, content_block_stop,
+//   message_delta, message_stop, error)
 // - Delta types: text_delta, input_json_delta, thinking_delta, signature_delta
 // - Rate-limit (429) and overloaded (529) retry with exponential back-off
 // - Authentication via API key from env or config
 
-use claurst_core::constants::{ANTHROPIC_API_VERSION, ANTHROPIC_BETA_HEADER};
-use claurst_core::error::ClaudeError;
-use claurst_core::types::{ContentBlock, Message, MessageContent, Role, ToolDefinition, UsageInfo};
+use std::{sync::Arc, time::Duration};
+
+use claurst_core::{
+    constants::{ANTHROPIC_API_VERSION, ANTHROPIC_BETA_HEADER},
+    error::ClaudeError,
+    types::{ContentBlock, Message, MessageContent, Role, ToolDefinition, UsageInfo},
+};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, warn};
 
@@ -27,12 +29,12 @@ pub mod cch;
 pub mod codex_adapter;
 
 // Provider-agnostic unified types (Phase 1A).
-pub mod provider_types;
 pub mod provider_error;
+pub mod provider_types;
 
 // Provider abstraction traits (Phase 1B).
-pub mod provider;
 pub mod auth;
+pub mod provider;
 pub mod stream_parser;
 pub mod transform;
 
@@ -54,50 +56,36 @@ pub mod transformers;
 // ---------------------------------------------------------------------------
 // Public re-exports
 // ---------------------------------------------------------------------------
-pub use client::AnthropicClient;
-pub use streaming::{AnthropicStreamEvent, StreamHandler};
-pub use types::*;
-
-// Phase 1A re-exports — provider-agnostic layer.
-pub use provider_types::*;
-pub use provider_error::ProviderError;
-
-// Phase 1B re-exports — provider abstraction traits.
-pub use provider::{LlmProvider, ModelInfo};
 pub use auth::{AuthProvider, LoginFlow};
-pub use stream_parser::{StreamParser, SseStreamParser, JsonLinesStreamParser};
-pub use transform::MessageTransformer;
-
-// Phase 1C re-exports — provider registry.
-pub use registry::ProviderRegistry;
-
-// Phase 1D re-exports — concrete provider adapters.
-pub use providers::AnthropicProvider;
-pub use providers::GoogleProvider;
-pub use providers::OpenAiProvider;
-
+pub use client::AnthropicClient;
+// Phase 6 re-exports — provider-aware error handling.
+pub use error_handling::{RetryConfig, is_context_overflow, parse_error_response};
 // Phase 3 re-exports — model registry.
 pub use model_registry::{ModelEntry, ModelRegistry, effective_model_for_config};
-
-// Phase 6 re-exports — provider-aware error handling.
-pub use error_handling::{is_context_overflow, parse_error_response, RetryConfig};
-
+// Phase 1B re-exports — provider abstraction traits.
+pub use provider::{LlmProvider, ModelInfo};
+pub use provider_error::ProviderError;
+// Phase 1A re-exports — provider-agnostic layer.
+pub use provider_types::*;
+// Phase 1D re-exports — concrete provider adapters.
+pub use providers::AnthropicProvider;
 // Phase 2E re-exports — Azure, Bedrock, and GitHub Copilot providers.
 pub use providers::AzureProvider;
-pub use providers::BedrockProvider;
-pub use providers::CopilotProvider;
-
-// Phase 2B re-exports — OpenAI-compatible generic adapter + common factories.
-pub use providers::{
-    OpenAiCompatProvider,
-    ollama, lm_studio, deepseek, groq, xai, openrouter, mistral,
-};
-
 // Phase 2D re-exports — Cohere native provider.
 pub use providers::CohereProvider;
-
+pub use providers::{BedrockProvider, CopilotProvider, GoogleProvider, OpenAiProvider};
+// Phase 2B re-exports — OpenAI-compatible generic adapter + common factories.
+pub use providers::{
+    OpenAiCompatProvider, deepseek, groq, lm_studio, mistral, ollama, openrouter, xai,
+};
+// Phase 1C re-exports — provider registry.
+pub use registry::ProviderRegistry;
+pub use stream_parser::{JsonLinesStreamParser, SseStreamParser, StreamParser};
+pub use streaming::{AnthropicStreamEvent, StreamHandler};
+pub use transform::MessageTransformer;
 // Phase 4 re-exports — concrete message transformers.
 pub use transformers::{AnthropicTransformer, OpenAiChatTransformer};
+pub use types::*;
 
 // ---------------------------------------------------------------------------
 // request / response types
@@ -273,14 +261,9 @@ pub mod streaming {
             content_block: ContentBlock,
         },
         /// Incremental delta for an existing content block.
-        ContentBlockDelta {
-            index: usize,
-            delta: ContentDelta,
-        },
+        ContentBlockDelta { index: usize, delta: ContentDelta },
         /// A content block is finished.
-        ContentBlockStop {
-            index: usize,
-        },
+        ContentBlockStop { index: usize },
         /// Final message-level delta (stop_reason, usage).
         MessageDelta {
             stop_reason: Option<String>,
@@ -289,14 +272,10 @@ pub mod streaming {
         /// The message is complete.
         MessageStop,
         /// An error occurred during streaming.
-        Error {
-            error_type: String,
-            message: String,
-        },
+        Error { error_type: String, message: String },
         /// A ping/keep-alive event.
         Ping,
     }
-
 
     /// The delta payload inside a `content_block_delta` event.
     #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -490,8 +469,7 @@ pub mod client {
 
         /// Send a non-streaming `POST /v1/messages` and return the full response.
         pub async fn create_message(
-            &self,
-            mut request: CreateMessageRequest,
+            &self, mut request: CreateMessageRequest,
         ) -> Result<CreateMessageResponse, ClaudeError> {
             // Deferred key validation — fail here rather than at construction
             // so that non-Anthropic provider setups don't crash on startup.
@@ -504,7 +482,11 @@ pub mod client {
                         "Model '{}' is a Google model. Use `--provider google` or set GOOGLE_API_KEY.",
                         model
                     )
-                } else if model.starts_with("gpt-") || model.starts_with("o1") || model.starts_with("o3") || model.starts_with("o4") {
+                } else if model.starts_with("gpt-")
+                    || model.starts_with("o1")
+                    || model.starts_with("o3")
+                    || model.starts_with("o4")
+                {
                     format!(
                         "Model '{}' is an OpenAI model. Use `--provider openai` or set OPENAI_API_KEY.",
                         model
@@ -536,11 +518,13 @@ pub mod client {
                     )
                 } else {
                     "Set ANTHROPIC_API_KEY, run `claurst auth login`, \
-                     or use --provider to select a different provider (e.g. --provider openai).".to_string()
+                     or use --provider to select a different provider (e.g. --provider openai)."
+                        .to_string()
                 };
-                return Err(ClaudeError::Auth(
-                    format!("No API key for the selected model. {}", hint)
-                ));
+                return Err(ClaudeError::Auth(format!(
+                    "No API key for the selected model. {}",
+                    hint
+                )));
             }
             // Route to Codex if configured
             if self.config.provider == Provider::Codex {
@@ -563,8 +547,7 @@ pub mod client {
 
         /// Send a request to OpenAI Codex API instead of Anthropic.
         async fn create_message_codex(
-            &self,
-            request: &CreateMessageRequest,
+            &self, request: &CreateMessageRequest,
         ) -> Result<CreateMessageResponse, ClaudeError> {
             // Convert Anthropic format to OpenAI format
             let openai_req = codex_adapter::anthropic_to_openai_request(request);
@@ -610,9 +593,7 @@ pub mod client {
         /// provided `handler` in real time, and also forwarded into the returned
         /// channel so the caller can drive a select loop.
         pub async fn create_message_stream(
-            &self,
-            mut request: CreateMessageRequest,
-            handler: Arc<dyn StreamHandler>,
+            &self, mut request: CreateMessageRequest, handler: Arc<dyn StreamHandler>,
         ) -> Result<mpsc::Receiver<streaming::AnthropicStreamEvent>, ClaudeError> {
             // Deferred key validation
             if self.config.api_key.is_empty() && self.config.provider != Provider::Codex {
@@ -622,28 +603,49 @@ pub mod client {
                         "Model '{}' is a Google model. Use `--provider google` or set GOOGLE_API_KEY.",
                         model
                     )
-                } else if model.starts_with("gpt-") || model.starts_with("o1") || model.starts_with("o3") || model.starts_with("o4") {
+                } else if model.starts_with("gpt-")
+                    || model.starts_with("o1")
+                    || model.starts_with("o3")
+                    || model.starts_with("o4")
+                {
                     format!(
                         "Model '{}' is an OpenAI model. Use `--provider openai` or set OPENAI_API_KEY.",
                         model
                     )
                 } else if model.starts_with("deepseek") {
-                    format!("Model '{}' is a DeepSeek model. Use `--provider deepseek` or set DEEPSEEK_API_KEY.", model)
+                    format!(
+                        "Model '{}' is a DeepSeek model. Use `--provider deepseek` or set DEEPSEEK_API_KEY.",
+                        model
+                    )
                 } else if model.starts_with("grok") {
-                    format!("Model '{}' is an xAI model. Use `--provider xai` or set XAI_API_KEY.", model)
+                    format!(
+                        "Model '{}' is an xAI model. Use `--provider xai` or set XAI_API_KEY.",
+                        model
+                    )
                 } else if model.starts_with("mistral") || model.starts_with("codestral") {
-                    format!("Model '{}' is a Mistral model. Use `--provider mistral` or set MISTRAL_API_KEY.", model)
+                    format!(
+                        "Model '{}' is a Mistral model. Use `--provider mistral` or set MISTRAL_API_KEY.",
+                        model
+                    )
                 } else if model.starts_with("command-") {
-                    format!("Model '{}' is a Cohere model. Use `--provider cohere` or set COHERE_API_KEY.", model)
+                    format!(
+                        "Model '{}' is a Cohere model. Use `--provider cohere` or set COHERE_API_KEY.",
+                        model
+                    )
                 } else if model.starts_with("llama") {
-                    format!("Model '{}' looks like a Llama model. Use `--provider groq` or `--provider ollama` for local.", model)
+                    format!(
+                        "Model '{}' looks like a Llama model. Use `--provider groq` or `--provider ollama` for local.",
+                        model
+                    )
                 } else {
                     "Set ANTHROPIC_API_KEY, run `claurst auth login`, \
-                     or use --provider to select a different provider (e.g. --provider openai).".to_string()
+                     or use --provider to select a different provider (e.g. --provider openai)."
+                        .to_string()
                 };
-                return Err(ClaudeError::Auth(
-                    format!("No API key for the selected model. {}", hint)
-                ));
+                return Err(ClaudeError::Auth(format!(
+                    "No API key for the selected model. {}",
+                    hint
+                )));
             }
             // Codex provider doesn't support streaming yet
             if self.config.provider == Provider::Codex {
@@ -720,10 +722,7 @@ pub mod client {
         // ---- Internal helpers --------------------------------------------
 
         /// Build the common request and execute with retry logic.
-        async fn send_with_retry(
-            &self,
-            body: &Value,
-        ) -> Result<reqwest::Response, ClaudeError> {
+        async fn send_with_retry(&self, body: &Value) -> Result<reqwest::Response, ClaudeError> {
             let url = format!("{}/v1/messages", self.config.api_base);
             let mut attempts = 0u32;
             let mut delay = self.config.initial_retry_delay;
@@ -738,7 +737,10 @@ pub mod client {
 
                 // Compute CCH hash and build billing header
                 let cch_hash = cch::compute_cch(body_bytes);
-                let billing_header = format!("cc_version=0.1; cc_entrypoint=claude_code; {}; cc_workload=claude_code;", cch_hash);
+                let billing_header = format!(
+                    "cc_version=0.1; cc_entrypoint=claude_code; {}; cc_workload=claude_code;",
+                    cch_hash
+                );
 
                 // Use Bearer auth for Claude.ai OAuth tokens; x-api-key for regular keys.
                 let mut req = self
@@ -817,8 +819,7 @@ pub mod client {
 
         /// Read an SSE byte stream, parse frames, and emit `AnthropicStreamEvent`s.
         async fn process_sse_stream(
-            resp: reqwest::Response,
-            handler: Arc<dyn StreamHandler>,
+            resp: reqwest::Response, handler: Arc<dyn StreamHandler>,
             tx: mpsc::Sender<streaming::AnthropicStreamEvent>,
         ) -> Result<(), ClaudeError> {
             use sse_parser::SseLineParser;
@@ -850,9 +851,7 @@ pub mod client {
                 for line in lines {
                     let line = line.trim_end_matches('\r');
                     if let Some(frame) = parser.feed_line(line) {
-                        if let Some(event) =
-                            Self::frame_to_event(&frame.event, &frame.data)
-                        {
+                        if let Some(event) = Self::frame_to_event(&frame.event, &frame.data) {
                             handler.on_event(&event);
                             if tx.send(event).await.is_err() {
                                 // Receiver dropped – stop reading.
@@ -868,8 +867,7 @@ pub mod client {
 
         /// Convert a parsed SSE frame into a typed `AnthropicStreamEvent`.
         fn frame_to_event(
-            event_type: &Option<String>,
-            data: &str,
+            event_type: &Option<String>, data: &str,
         ) -> Option<streaming::AnthropicStreamEvent> {
             let event_name = event_type.as_deref().unwrap_or("");
 
@@ -1124,7 +1122,10 @@ impl StreamAccumulator {
                         name: name.clone(),
                         json_buf: String::new(),
                     },
-                    ContentBlock::Thinking { thinking, signature } => PartialBlock::Thinking {
+                    ContentBlock::Thinking {
+                        thinking,
+                        signature,
+                    } => PartialBlock::Thinking {
                         thinking_buf: thinking.clone(),
                         signature_buf: signature.clone(),
                     },

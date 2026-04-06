@@ -12,32 +12,35 @@
 // Model list: static — the Codex endpoint does not expose a /models route,
 //   so we use the `CODEX_MODELS` constant from `claurst-core`.
 
-use std::pin::Pin;
-use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    pin::Pin,
+    sync::{Arc, Mutex},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use async_stream::stream;
 use async_trait::async_trait;
-use claurst_core::codex_oauth::{
-    CODEX_API_ENDPOINT, CODEX_MODELS, CODEX_TOKEN_URL, DEFAULT_CODEX_MODEL,
+use claurst_core::{
+    codex_oauth::{CODEX_API_ENDPOINT, CODEX_MODELS, CODEX_TOKEN_URL, DEFAULT_CODEX_MODEL},
+    oauth_config::{CodexTokens, get_codex_tokens, save_codex_tokens},
+    provider_id::{ModelId, ProviderId},
+    types::UsageInfo,
 };
-use claurst_core::oauth_config::{get_codex_tokens, save_codex_tokens, CodexTokens};
-use claurst_core::provider_id::{ModelId, ProviderId};
-use claurst_core::types::UsageInfo;
 use futures::Stream;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::{debug, warn};
-
-use crate::error_handling::parse_error_response;
-use crate::provider::{LlmProvider, ModelInfo};
-use crate::provider_error::ProviderError;
-use crate::provider_types::{
-    ProviderCapabilities, ProviderRequest, ProviderResponse, ProviderStatus, StopReason,
-    StreamEvent, SystemPromptStyle,
-};
 
 // Re-use Copilot's message translation helpers via the public Copilot type.
 use crate::providers::copilot::CopilotProvider;
+use crate::{
+    error_handling::parse_error_response,
+    provider::{LlmProvider, ModelInfo},
+    provider_error::ProviderError,
+    provider_types::{
+        ProviderCapabilities, ProviderRequest, ProviderResponse, ProviderStatus, StopReason,
+        StreamEvent, SystemPromptStyle,
+    },
+};
 
 // ---------------------------------------------------------------------------
 // CodexProvider
@@ -181,9 +184,7 @@ impl CodexProvider {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let expires_in = json_val
-            .get("expires_in")
-            .and_then(|v| v.as_u64());
+        let expires_in = json_val.get("expires_in").and_then(|v| v.as_u64());
 
         let new_expires_at = expires_in.map(|secs| {
             SystemTime::now()
@@ -221,10 +222,7 @@ impl CodexProvider {
     // -----------------------------------------------------------------------
 
     fn codex_headers(
-        &self,
-        builder: reqwest::RequestBuilder,
-        token: &str,
-        account_id: Option<&str>,
+        &self, builder: reqwest::RequestBuilder, token: &str, account_id: Option<&str>,
     ) -> reqwest::RequestBuilder {
         let builder = builder
             .bearer_auth(token)
@@ -279,8 +277,7 @@ impl CodexProvider {
     // -----------------------------------------------------------------------
 
     async fn send_responses_request(
-        &self,
-        request: &ProviderRequest,
+        &self, request: &ProviderRequest,
     ) -> Result<ProviderResponse, ProviderError> {
         let token = self.access_token().await?;
         let account_id = self.account_id();
@@ -332,8 +329,7 @@ impl CodexProvider {
     // -----------------------------------------------------------------------
 
     fn parse_responses_response(
-        &self,
-        json_val: &Value,
+        &self, json_val: &Value,
     ) -> Result<ProviderResponse, ProviderError> {
         use claurst_core::types::ContentBlock;
 
@@ -368,9 +364,7 @@ impl CodexProvider {
                         for part in parts {
                             match part.get("type").and_then(|v| v.as_str()) {
                                 Some("output_text") | Some("text") => {
-                                    if let Some(text) =
-                                        part.get("text").and_then(|v| v.as_str())
-                                    {
+                                    if let Some(text) = part.get("text").and_then(|v| v.as_str()) {
                                         if !text.is_empty() {
                                             content.push(ContentBlock::Text {
                                                 text: text.to_string(),
@@ -453,7 +447,13 @@ impl CodexProvider {
             }
         };
 
-        Ok(ProviderResponse { id, content, stop_reason, usage, model })
+        Ok(ProviderResponse {
+            id,
+            content,
+            stop_reason,
+            usage,
+            model,
+        })
     }
 
     // -----------------------------------------------------------------------
@@ -461,8 +461,7 @@ impl CodexProvider {
     // -----------------------------------------------------------------------
 
     fn stream_synthetic_response(
-        &self,
-        response: ProviderResponse,
+        &self, response: ProviderResponse,
     ) -> Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>> {
         use claurst_core::types::ContentBlock;
 
@@ -547,15 +546,13 @@ impl LlmProvider for CodexProvider {
     }
 
     async fn create_message(
-        &self,
-        request: ProviderRequest,
+        &self, request: ProviderRequest,
     ) -> Result<ProviderResponse, ProviderError> {
         self.send_responses_request(&request).await
     }
 
     async fn create_message_stream(
-        &self,
-        request: ProviderRequest,
+        &self, request: ProviderRequest,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>, ProviderError>
     {
         let response = self.send_responses_request(&request).await?;

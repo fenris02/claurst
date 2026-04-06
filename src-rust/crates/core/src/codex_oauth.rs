@@ -1,5 +1,4 @@
 //! OpenAI Codex OAuth configuration and constants.
-//!
 
 /// OpenAI Codex OAuth client ID (shared with the OpenCode ecosystem).
 pub const CODEX_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";

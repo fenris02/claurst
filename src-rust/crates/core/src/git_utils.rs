@@ -1,8 +1,10 @@
 //! Git utilities for Claurst.
 //! Mirrors src/utils/git.ts (926 lines) and src/utils/git/ subdirectory.
 
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 // ---------------------------------------------------------------------------
 // Repository discovery
@@ -42,7 +44,11 @@ fn git_output(repo_root: &Path, args: &[&str]) -> String {
 /// Return the current branch name (or "HEAD" if detached).
 pub fn get_current_branch(repo_root: &Path) -> String {
     let branch = git_output(repo_root, &["rev-parse", "--abbrev-ref", "HEAD"]);
-    if branch.is_empty() { "HEAD".to_string() } else { branch }
+    if branch.is_empty() {
+        "HEAD".to_string()
+    } else {
+        branch
+    }
 }
 
 /// Return list of files modified (staged or unstaged).
@@ -93,12 +99,15 @@ pub struct CommitInfo {
 pub fn get_commit_history(repo_root: &Path, n: usize) -> Vec<CommitInfo> {
     let format = "%H%x1f%h%x1f%an%x1f%ad%x1f%s%x1e";
     let n_str = n.to_string();
-    let output = git_output(repo_root, &[
-        "log",
-        &format!("-{}", n_str),
-        &format!("--format={}", format),
-        "--date=short",
-    ]);
+    let output = git_output(
+        repo_root,
+        &[
+            "log",
+            &format!("-{}", n_str),
+            &format!("--format={}", format),
+            "--date=short",
+        ],
+    );
 
     output
         .split('\x1e')
@@ -191,8 +200,9 @@ pub fn is_ignored(repo_root: &Path, path: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::Path;
+
+    use super::*;
 
     #[test]
     fn get_repo_root_finds_git() {

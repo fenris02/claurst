@@ -10,16 +10,19 @@
 //! - Enter: toggle status (pending→in_progress→completed→pending)
 //! - Escape/Q: close overlay
 
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph};
-use ratatui::Frame;
 use std::sync::Arc;
 
-use crate::overlays::centered_rect;
-use claurst_tools::TaskStatus;
 use chrono;
+use claurst_tools::TaskStatus;
+use ratatui::{
+    Frame,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, Paragraph},
+};
+
+use crate::overlays::centered_rect;
 
 // ---------------------------------------------------------------------------
 // Helper functions for TaskStatus (defined in cc_tools)
@@ -43,7 +46,9 @@ pub fn next_status(status: &TaskStatus) -> TaskStatus {
     match status {
         TaskStatus::Pending => TaskStatus::InProgress,
         TaskStatus::InProgress => TaskStatus::Completed,
-        TaskStatus::Completed | TaskStatus::Running | TaskStatus::Failed | TaskStatus::Deleted => TaskStatus::Pending,
+        TaskStatus::Completed | TaskStatus::Running | TaskStatus::Failed | TaskStatus::Deleted => {
+            TaskStatus::Pending
+        }
     }
 }
 
@@ -105,7 +110,9 @@ impl TasksOverlay {
     ///
     /// This should be called periodically (e.g., every frame) to keep the
     /// overlay in sync with the global task state.
-    pub fn refresh_tasks(&mut self, task_store: &Arc<dashmap::DashMap<String, claurst_tools::Task>>) {
+    pub fn refresh_tasks(
+        &mut self, task_store: &Arc<dashmap::DashMap<String, claurst_tools::Task>>,
+    ) {
         self.tasks.clear();
 
         for entry in task_store.iter() {
@@ -214,7 +221,11 @@ impl TasksOverlay {
 
     /// Get statistics for the title bar.
     fn stats(&self) -> (usize, usize, usize) {
-        let pending = self.tasks.iter().filter(|t| matches!(t.status, TaskStatus::Pending)).count();
+        let pending = self
+            .tasks
+            .iter()
+            .filter(|t| matches!(t.status, TaskStatus::Pending))
+            .count();
         let in_progress = self
             .tasks
             .iter()
@@ -253,8 +264,10 @@ pub fn render_tasks_overlay(frame: &mut Frame, overlay: &TasksOverlay, area: Rec
 
     // Get statistics for title
     let (pending, in_progress, completed) = overlay.stats();
-    let title_text = format!("Tasks ({} pending, {} in_progress, {} completed)",
-                             pending, in_progress, completed);
+    let title_text = format!(
+        "Tasks ({} pending, {} in_progress, {} completed)",
+        pending, in_progress, completed
+    );
 
     let block = Block::default()
         .borders(Borders::ALL)
@@ -282,7 +295,8 @@ pub fn render_tasks_overlay(frame: &mut Frame, overlay: &TasksOverlay, area: Rec
         let viewport_height = inner.height as usize;
         let end_idx = (overlay.scroll_offset as usize + viewport_height).min(overlay.tasks.len());
 
-        for (i, task) in overlay.tasks
+        for (i, task) in overlay
+            .tasks
             .iter()
             .enumerate()
             .skip(overlay.scroll_offset as usize)
@@ -321,7 +335,9 @@ pub fn render_tasks_overlay(frame: &mut Frame, overlay: &TasksOverlay, area: Rec
         if end_idx < overlay.tasks.len() {
             lines.push(Line::from(Span::styled(
                 "  ... more tasks below",
-                Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC),
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::ITALIC),
             )));
         }
     }

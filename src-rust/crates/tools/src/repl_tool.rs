@@ -12,20 +12,22 @@
 // global registry.  Code is injected over stdin; a known sentinel string is
 // printed after each block so we know when output is complete.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
+use std::{process::Stdio, sync::Arc, time::Duration};
+
 use async_trait::async_trait;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
-use serde_json::{json, Value};
-use std::process::Stdio;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStdin, ChildStdout};
-use tokio::sync::Mutex;
-use tokio::time::timeout;
+use serde_json::{Value, json};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    process::{Child, ChildStdin, ChildStdout},
+    sync::Mutex,
+    time::timeout,
+};
 use tracing::debug;
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 // ---------------------------------------------------------------------------
 // Session registry
@@ -88,8 +90,7 @@ fn wrap_code(language: &str, code: &str) -> String {
 }
 
 async fn get_or_spawn_session(
-    session_id: &str,
-    language: &str,
+    session_id: &str, language: &str,
 ) -> Result<Arc<Mutex<ReplSession>>, String> {
     let key = (session_id.to_string(), language.to_string());
 
@@ -99,8 +100,8 @@ async fn get_or_spawn_session(
     }
 
     // Spawn a new interpreter
-    let (cmd, args) = interpreter_for(language)
-        .ok_or_else(|| format!("Unsupported language: {}", language))?;
+    let (cmd, args) =
+        interpreter_for(language).ok_or_else(|| format!("Unsupported language: {}", language))?;
 
     let mut child = tokio::process::Command::new(cmd)
         .args(&args)
@@ -125,9 +126,7 @@ async fn get_or_spawn_session(
 
 /// Execute code in a session, returning collected output up to the sentinel.
 async fn run_in_session(
-    session: &Arc<Mutex<ReplSession>>,
-    language: &str,
-    code: &str,
+    session: &Arc<Mutex<ReplSession>>, language: &str, code: &str,
 ) -> Result<String, String> {
     let wrapped = wrap_code(language, code);
 
@@ -155,7 +154,7 @@ async fn run_in_session(
                 return Err(format!(
                     "Interpreter timed out after {}s waiting for output.",
                     read_timeout.as_secs()
-                ))
+                ));
             }
             Ok(Err(e)) => return Err(format!("Read error: {}", e)),
             Ok(Ok(0)) => {
@@ -232,11 +231,7 @@ impl Tool for ReplTool {
             Err(e) => return ToolResult::error(format!("Invalid input: {}", e)),
         };
 
-        let language = params
-            .language
-            .as_deref()
-            .unwrap_or("bash")
-            .to_lowercase();
+        let language = params.language.as_deref().unwrap_or("bash").to_lowercase();
 
         debug!(
             session = %ctx.session_id,

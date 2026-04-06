@@ -3,9 +3,10 @@
 // Supports hover, definition, references, document symbols, and diagnostics.
 // Ported from the TypeScript LSPTool; extended with full action routing.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 use async_trait::async_trait;
 use serde_json::Value;
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 pub struct LspTool;
 
@@ -74,14 +75,8 @@ impl Tool for LspTool {
         };
 
         // line/column only required for position-based actions
-        let line = input
-            .get("line")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(1) as u32;
-        let column = input
-            .get("column")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(1) as u32;
+        let line = input.get("line").and_then(|v| v.as_u64()).unwrap_or(1) as u32;
+        let column = input.get("column").and_then(|v| v.as_u64()).unwrap_or(1) as u32;
 
         // --- Seed the global LSP manager with configs from current session ---
         let lsp_manager_arc = claurst_core::lsp::global_lsp_manager();
@@ -172,9 +167,7 @@ impl Tool for LspTool {
             "symbols" => {
                 let result = {
                     let mut manager = lsp_manager_arc.lock().await;
-                    manager
-                        .document_symbols(&file_path, &ctx.working_dir)
-                        .await
+                    manager.document_symbols(&file_path, &ctx.working_dir).await
                 };
                 match result {
                     Ok(syms) if syms.is_empty() => {
@@ -196,10 +189,7 @@ impl Tool for LspTool {
                 };
 
                 if diagnostics.is_empty() {
-                    return ToolResult::success(format!(
-                        "No diagnostics for '{}'.",
-                        file_path
-                    ));
+                    return ToolResult::success(format!("No diagnostics for '{}'.", file_path));
                 }
 
                 let output = claurst_core::lsp::LspManager::format_diagnostics(&diagnostics);

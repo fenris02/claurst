@@ -5,8 +5,9 @@
 //! `scroll_offset` (rows from top) and render only items whose row ranges
 //! intersect the viewport.
 
-use ratatui::{buffer::Buffer, layout::Rect};
 use std::collections::HashMap;
+
+use ratatui::{buffer::Buffer, layout::Rect};
 
 /// Trait that list items must implement so the virtual list can measure
 /// and render them.
@@ -292,7 +293,10 @@ impl<T: VirtualItem> VirtualList<T> {
     /// Scroll to the next search match after `current_idx`.
     pub fn next_match(&mut self, query: &str, current_idx: usize, width: u16) -> Option<usize> {
         let matches = self.find_matches(query).to_vec();
-        let next = matches.iter().find(|&&i| i > current_idx).copied()
+        let next = matches
+            .iter()
+            .find(|&&i| i > current_idx)
+            .copied()
             .or_else(|| matches.first().copied());
         if let Some(idx) = next {
             self.scroll_to_index(idx, width);
@@ -303,7 +307,11 @@ impl<T: VirtualItem> VirtualList<T> {
     /// Scroll to the previous search match before `current_idx`.
     pub fn prev_match(&mut self, query: &str, current_idx: usize, width: u16) -> Option<usize> {
         let matches = self.find_matches(query).to_vec();
-        let prev = matches.iter().rev().find(|&&i| i < current_idx).copied()
+        let prev = matches
+            .iter()
+            .rev()
+            .find(|&&i| i < current_idx)
+            .copied()
             .or_else(|| matches.last().copied());
         if let Some(idx) = prev {
             self.scroll_to_index(idx, width);
@@ -313,5 +321,7 @@ impl<T: VirtualItem> VirtualList<T> {
 }
 
 impl<T: VirtualItem> Default for VirtualList<T> {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }

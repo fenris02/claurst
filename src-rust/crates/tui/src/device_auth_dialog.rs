@@ -5,14 +5,16 @@
 // network requests run in a background tokio task; this module only owns the
 // display state.
 
-use ratatui::layout::Rect;
-use ratatui::prelude::Stylize;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
-use ratatui::Frame;
+use ratatui::{
+    Frame,
+    layout::Rect,
+    prelude::Stylize,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::Paragraph,
+};
 
-use crate::overlays::{centered_rect, render_dark_overlay, render_dialog_bg, CLAURST_PANEL_BG};
+use crate::overlays::{CLAURST_PANEL_BG, centered_rect, render_dark_overlay, render_dialog_bg};
 
 // ---------------------------------------------------------------------------
 // Status enum
@@ -84,11 +86,7 @@ impl DeviceAuthDialogState {
 
     /// Set the device code information received from the authorization server.
     pub fn set_code(
-        &mut self,
-        user_code: String,
-        verification_uri: String,
-        device_code: String,
-        interval: u64,
+        &mut self, user_code: String, verification_uri: String, device_code: String, interval: u64,
     ) {
         self.user_code = user_code;
         self.verification_uri = verification_uri;
@@ -140,11 +138,7 @@ pub enum DeviceAuthEvent {
 
 /// Render the device auth dialog overlay — OpenCode-style: dark overlay, no
 /// border, minimal and polished.
-pub fn render_device_auth_dialog(
-    frame: &mut Frame,
-    state: &DeviceAuthDialogState,
-    area: Rect,
-) {
+pub fn render_device_auth_dialog(frame: &mut Frame, state: &DeviceAuthDialogState, area: Rect) {
     if !state.visible {
         return;
     }
@@ -221,9 +215,7 @@ pub fn render_device_auth_dialog(
                 Span::styled(" at ", Style::default().fg(dim)),
                 Span::styled(
                     state.verification_uri.clone(),
-                    Style::default()
-                        .fg(pink)
-                        .add_modifier(Modifier::UNDERLINED),
+                    Style::default().fg(pink).add_modifier(Modifier::UNDERLINED),
                 ),
             ]));
             lines.push(Line::from(""));
@@ -252,9 +244,7 @@ pub fn render_device_auth_dialog(
             lines.push(Line::from(""));
             lines.push(Line::from(Span::styled(
                 " \u{2714} Connected successfully!",
-                Style::default()
-                    .fg(green)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(green).add_modifier(Modifier::BOLD),
             )));
             lines.push(Line::from(""));
             lines.push(Line::from(Span::styled(

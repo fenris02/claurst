@@ -5,9 +5,11 @@
 // in both directions (outbound request serialisation and inbound response
 // deserialisation).
 
-use crate::provider_error::ProviderError;
-use crate::provider_types::{ProviderRequest, ProviderResponse};
-use crate::provider::ModelInfo;
+use crate::{
+    provider::ModelInfo,
+    provider_error::ProviderError,
+    provider_types::{ProviderRequest, ProviderResponse},
+};
 
 // ---------------------------------------------------------------------------
 // MessageTransformer
@@ -25,16 +27,13 @@ pub trait MessageTransformer: Send + Sync {
     /// The returned `Value` is typically passed directly to `reqwest` as the
     /// body of a `POST` request.
     fn to_provider(
-        &self,
-        request: &ProviderRequest,
-        model: &ModelInfo,
+        &self, request: &ProviderRequest, model: &ModelInfo,
     ) -> Result<serde_json::Value, ProviderError>;
 
     /// Deserialize a provider-specific JSON response body into a
     /// `ProviderResponse`.
     fn from_provider(
-        &self,
-        response: &serde_json::Value,
+        &self, response: &serde_json::Value,
     ) -> Result<ProviderResponse, ProviderError>;
 
     /// Apply provider-specific prompt-caching markers to an already-serialized

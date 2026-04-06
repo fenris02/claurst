@@ -4,9 +4,9 @@
 // the type system prevents accidentally passing a model name where a provider
 // name is expected (and vice-versa).
 
+use std::{fmt, ops::Deref};
+
 use serde::{Deserialize, Serialize};
-use std::ops::Deref;
-use std::fmt;
 
 // ---------------------------------------------------------------------------
 // ProviderId
@@ -20,56 +20,56 @@ use std::fmt;
 pub struct ProviderId(String);
 
 impl ProviderId {
-    /// Construct a `ProviderId` from any string-like value.
-    pub fn new(s: impl Into<String>) -> Self {
-        ProviderId(s.into())
-    }
-
+    pub const AMAZON_BEDROCK: &'static str = "amazon-bedrock";
     // -----------------------------------------------------------------------
     // Well-known provider constants
     // -----------------------------------------------------------------------
 
     pub const ANTHROPIC: &'static str = "anthropic";
-    pub const OPENAI: &'static str = "openai";
+    pub const AZURE: &'static str = "azure";
+    pub const BASETEN: &'static str = "baseten";
+    pub const CEREBRAS: &'static str = "cerebras";
+    pub const CLOUDFLARE: &'static str = "cloudflare";
+    pub const CODEX: &'static str = "codex";
+    pub const COHERE: &'static str = "cohere";
+    pub const DEEPINFRA: &'static str = "deepinfra";
+    pub const DEEPSEEK: &'static str = "deepseek";
+    pub const FIREWORKS: &'static str = "fireworks";
+    pub const FRIENDLI: &'static str = "friendli";
+    pub const GITHUB_COPILOT: &'static str = "github-copilot";
+    pub const GITLAB: &'static str = "gitlab";
     pub const GOOGLE: &'static str = "google";
     pub const GOOGLE_VERTEX: &'static str = "google-vertex";
-    pub const AMAZON_BEDROCK: &'static str = "amazon-bedrock";
-    pub const AZURE: &'static str = "azure";
-    pub const GITHUB_COPILOT: &'static str = "github-copilot";
-    pub const MISTRAL: &'static str = "mistral";
-    pub const XAI: &'static str = "xai";
     pub const GROQ: &'static str = "groq";
-    pub const DEEPINFRA: &'static str = "deepinfra";
-    pub const CEREBRAS: &'static str = "cerebras";
-    pub const COHERE: &'static str = "cohere";
-    pub const TOGETHER_AI: &'static str = "together-ai";
-    pub const PERPLEXITY: &'static str = "perplexity";
-    pub const OPENROUTER: &'static str = "openrouter";
-    pub const OLLAMA: &'static str = "ollama";
-    pub const LM_STUDIO: &'static str = "lm-studio";
-    pub const LLAMA_CPP: &'static str = "llama-cpp";
-    pub const DEEPSEEK: &'static str = "deepseek";
-    pub const GITLAB: &'static str = "gitlab";
-    pub const CLOUDFLARE: &'static str = "cloudflare";
-    pub const VENICE: &'static str = "venice";
-    pub const SAP: &'static str = "sap";
-    pub const SAMBANOVA: &'static str = "sambanova";
     pub const HUGGINGFACE: &'static str = "huggingface";
-    pub const NVIDIA: &'static str = "nvidia";
-    pub const SILICONFLOW: &'static str = "siliconflow";
+    pub const LLAMA_CPP: &'static str = "llama-cpp";
+    pub const LM_STUDIO: &'static str = "lm-studio";
+    pub const MISTRAL: &'static str = "mistral";
     pub const MOONSHOT: &'static str = "moonshotai";
-    pub const ZHIPU: &'static str = "zhipuai";
     pub const NEBIUS: &'static str = "nebius";
-    pub const OVHCLOUD: &'static str = "ovhcloud";
-    pub const SCALEWAY: &'static str = "scaleway";
-    pub const VULTR: &'static str = "vultr";
-    pub const BASETEN: &'static str = "baseten";
-    pub const FRIENDLI: &'static str = "friendli";
-    pub const UPSTAGE: &'static str = "upstage";
-    pub const STEPFUN: &'static str = "stepfun";
-    pub const FIREWORKS: &'static str = "fireworks";
     pub const NOVITA: &'static str = "novita";
-    pub const CODEX: &'static str = "codex";
+    pub const NVIDIA: &'static str = "nvidia";
+    pub const OLLAMA: &'static str = "ollama";
+    pub const OPENAI: &'static str = "openai";
+    pub const OPENROUTER: &'static str = "openrouter";
+    pub const OVHCLOUD: &'static str = "ovhcloud";
+    pub const PERPLEXITY: &'static str = "perplexity";
+    pub const SAMBANOVA: &'static str = "sambanova";
+    pub const SAP: &'static str = "sap";
+    pub const SCALEWAY: &'static str = "scaleway";
+    pub const SILICONFLOW: &'static str = "siliconflow";
+    pub const STEPFUN: &'static str = "stepfun";
+    pub const TOGETHER_AI: &'static str = "together-ai";
+    pub const UPSTAGE: &'static str = "upstage";
+    pub const VENICE: &'static str = "venice";
+    pub const VULTR: &'static str = "vultr";
+    pub const XAI: &'static str = "xai";
+    pub const ZHIPU: &'static str = "zhipuai";
+
+    /// Construct a `ProviderId` from any string-like value.
+    pub fn new(s: impl Into<String>) -> Self {
+        ProviderId(s.into())
+    }
 }
 
 impl fmt::Display for ProviderId {

@@ -5,9 +5,9 @@
 //!
 //! Gated behind `cached_microcompact` feature flag.
 
-use crate::types::Message;
-use crate::Role;
 use serde::{Deserialize, Serialize};
+
+use crate::{Role, types::Message};
 
 /// Strategy for collapsing a conversation when it exceeds token limits.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -53,9 +53,7 @@ pub fn estimate_message_tokens(messages: &[Message]) -> u64 {
 /// Returns the collapsed message list and collapse state (if collapsing occurred).
 #[cfg(feature = "cached_microcompact")]
 pub fn collapse_context(
-    messages: Vec<Message>,
-    max_tokens: u64,
-    strategy: CollapseStrategy,
+    messages: Vec<Message>, max_tokens: u64, strategy: CollapseStrategy,
 ) -> (Vec<Message>, Option<CollapseState>) {
     let initial_tokens = estimate_message_tokens(&messages);
 
@@ -85,9 +83,7 @@ pub fn collapse_context(
 
 #[cfg(not(feature = "cached_microcompact"))]
 pub fn collapse_context(
-    messages: Vec<Message>,
-    _max_tokens: u64,
-    _strategy: CollapseStrategy,
+    messages: Vec<Message>, _max_tokens: u64, _strategy: CollapseStrategy,
 ) -> (Vec<Message>, Option<CollapseState>) {
     // Without feature flag, return as-is
     (messages, None)

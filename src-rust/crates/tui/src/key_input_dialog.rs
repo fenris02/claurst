@@ -3,14 +3,16 @@
 // Provides a modal dialog that collects an API key from the user with
 // masked display (showing only the last 4 characters).
 
-use ratatui::layout::Rect;
-use ratatui::prelude::Stylize;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
-use ratatui::Frame;
+use ratatui::{
+    Frame,
+    layout::Rect,
+    prelude::Stylize,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::Paragraph,
+};
 
-use crate::overlays::{centered_rect, render_dark_overlay, render_dialog_bg, CLAURST_PANEL_BG};
+use crate::overlays::{CLAURST_PANEL_BG, centered_rect, render_dark_overlay, render_dialog_bg};
 
 // ---------------------------------------------------------------------------
 // State
@@ -86,11 +88,7 @@ impl KeyInputDialogState {
 
 /// Render the key input dialog overlay — OpenCode-style: dark overlay, no
 /// border, minimal and polished.
-pub fn render_key_input_dialog(
-    frame: &mut Frame,
-    state: &KeyInputDialogState,
-    area: Rect,
-) {
+pub fn render_key_input_dialog(frame: &mut Frame, state: &KeyInputDialogState, area: Rect) {
     if !state.visible {
         return;
     }
@@ -151,11 +149,7 @@ pub fn render_key_input_dialog(
         if len <= 4 {
             state.input.clone()
         } else {
-            format!(
-                "{}{}",
-                "\u{2022}".repeat(len - 4),
-                &state.input[len - 4..]
-            )
+            format!("{}{}", "\u{2022}".repeat(len - 4), &state.input[len - 4..])
         }
     };
 

@@ -263,11 +263,7 @@ impl CompanionStats {
                 ((floor + 50.0 + rng.next_f64() * 30.0) as u8).min(100)
             } else if i == dump_idx {
                 let raw = floor - 10.0 + rng.next_f64() * 15.0;
-                if raw < 1.0 {
-                    1
-                } else {
-                    raw as u8
-                }
+                if raw < 1.0 { 1 } else { raw as u8 }
             } else {
                 (floor + rng.next_f64() * 40.0) as u8
             };
@@ -863,9 +859,8 @@ pub fn animation_frame(tick: u64) -> usize {
 ///
 /// - Substitutes the companion's eye glyph into `{E}` placeholders.
 /// - Overlays the hat on line 0 when line 0 is blank in the chosen frame.
-/// - Drops a blank line-0 when *all* three frames have blank line 0 (no hat
-///   and no per-frame animation content), matching the TypeScript behaviour
-///   that avoids wasted rows.
+/// - Drops a blank line-0 when *all* three frames have blank line 0 (no hat and no per-frame
+///   animation content), matching the TypeScript behaviour that avoids wasted rows.
 pub fn render(companion: &Companion, tick: u64) -> String {
     let frames = get_sprite_frames(&companion.bones.species);
     let frame_idx = animation_frame(tick);

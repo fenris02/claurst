@@ -4,18 +4,19 @@
 //
 // When called by the LLM (or user) with a `server_name`, this tool:
 //  1. Checks whether the server is already connected (no auth needed).
-//  2. If the server is an HTTP/SSE server, calls `McpManager::initiate_auth()`
-//     to fetch `/.well-known/oauth-authorization-server` metadata, build the
-//     PKCE authorization URL, and return it so the user can open it.
+//  2. If the server is an HTTP/SSE server, calls `McpManager::initiate_auth()` to fetch
+//     `/.well-known/oauth-authorization-server` metadata, build the PKCE authorization URL, and
+//     return it so the user can open it.
 //  3. Attempts to open the URL in the system browser (best-effort).
 //  4. For stdio servers, explains env-var based authentication.
 //
 // This mirrors the TypeScript `mcp__<name>__authenticate` dynamic tool.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 pub struct McpAuthTool;
 
@@ -65,7 +66,7 @@ impl Tool for McpAuthTool {
             None => {
                 return ToolResult::error(
                     "No MCP manager configured. Cannot authenticate MCP servers.".to_string(),
-                )
+                );
             }
         };
 

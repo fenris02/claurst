@@ -11,22 +11,25 @@ use std::pin::Pin;
 
 use async_stream::stream;
 use async_trait::async_trait;
-use claurst_core::provider_id::{ModelId, ProviderId};
-use claurst_core::types::{ContentBlock, UsageInfo};
+use claurst_core::{
+    provider_id::{ModelId, ProviderId},
+    types::{ContentBlock, UsageInfo},
+};
 use futures::Stream;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::debug;
 
-use crate::error_handling::parse_error_response;
-use crate::provider::{LlmProvider, ModelInfo};
-use crate::provider_error::ProviderError;
-use crate::provider_types::{
-    ProviderCapabilities, ProviderRequest, ProviderResponse, ProviderStatus, StreamEvent,
-    SystemPromptStyle,
-};
-use crate::providers::openai::OpenAiProvider;
-
 use super::request_options::merge_openai_compatible_options;
+use crate::{
+    error_handling::parse_error_response,
+    provider::{LlmProvider, ModelInfo},
+    provider_error::ProviderError,
+    provider_types::{
+        ProviderCapabilities, ProviderRequest, ProviderResponse, ProviderStatus, StreamEvent,
+        SystemPromptStyle,
+    },
+    providers::openai::OpenAiProvider,
+};
 
 // ---------------------------------------------------------------------------
 // AzureProvider
@@ -64,8 +67,8 @@ impl AzureProvider {
     pub fn from_env() -> Option<Self> {
         let key = std::env::var("AZURE_API_KEY").ok()?;
         let resource = std::env::var("AZURE_RESOURCE_NAME").ok()?;
-        let version = std::env::var("AZURE_API_VERSION")
-            .unwrap_or_else(|_| "2024-08-01-preview".to_string());
+        let version =
+            std::env::var("AZURE_API_VERSION").unwrap_or_else(|_| "2024-08-01-preview".to_string());
         Some(Self::new(resource, key).with_api_version(version))
     }
 
@@ -81,8 +84,7 @@ impl AzureProvider {
     }
 
     async fn send_non_streaming(
-        &self,
-        request: &ProviderRequest,
+        &self, request: &ProviderRequest,
     ) -> Result<ProviderResponse, ProviderError> {
         let messages = OpenAiProvider::to_openai_messages_pub(
             &request.messages,
@@ -151,8 +153,7 @@ impl AzureProvider {
     }
 
     async fn do_streaming(
-        &self,
-        request: &ProviderRequest,
+        &self, request: &ProviderRequest,
     ) -> Result<reqwest::Response, ProviderError> {
         let messages = OpenAiProvider::to_openai_messages_pub(
             &request.messages,
@@ -225,15 +226,13 @@ impl LlmProvider for AzureProvider {
     }
 
     async fn create_message(
-        &self,
-        request: ProviderRequest,
+        &self, request: ProviderRequest,
     ) -> Result<ProviderResponse, ProviderError> {
         self.send_non_streaming(&request).await
     }
 
     async fn create_message_stream(
-        &self,
-        request: ProviderRequest,
+        &self, request: ProviderRequest,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>, ProviderError>
     {
         let resp = self.do_streaming(&request).await?;

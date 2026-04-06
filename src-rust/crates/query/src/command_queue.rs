@@ -5,9 +5,11 @@
 //
 // Mirrors the TypeScript `messageQueueManager.js` behaviour.
 
-use std::cmp::Ordering;
-use std::collections::BinaryHeap;
-use std::sync::{Arc, Mutex};
+use std::{
+    cmp::Ordering,
+    collections::BinaryHeap,
+    sync::{Arc, Mutex},
+};
 
 // ---------------------------------------------------------------------------
 // Priority
@@ -111,7 +113,11 @@ impl CommandQueue {
             .unwrap_or_default()
             .as_millis() as u64;
         let mut heap = self.0.lock().unwrap();
-        heap.push(QueueEntry { command, priority, timestamp: ts });
+        heap.push(QueueEntry {
+            command,
+            priority,
+            timestamp: ts,
+        });
     }
 
     /// Drain all pending commands in priority order (highest first).

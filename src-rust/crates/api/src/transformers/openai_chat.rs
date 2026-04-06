@@ -4,12 +4,15 @@
 // Delegates message/tool conversion to the public helpers exposed by
 // `OpenAiProvider` so that all format logic lives in one place.
 
-use crate::provider::ModelInfo;
-use crate::provider_error::ProviderError;
-use crate::provider_types::{ProviderRequest, ProviderResponse};
-use crate::providers::OpenAiProvider;
-use crate::transform::MessageTransformer;
 use claurst_core::provider_id::ProviderId;
+
+use crate::{
+    provider::ModelInfo,
+    provider_error::ProviderError,
+    provider_types::{ProviderRequest, ProviderResponse},
+    providers::OpenAiProvider,
+    transform::MessageTransformer,
+};
 
 // ---------------------------------------------------------------------------
 // OpenAiChatTransformer
@@ -25,14 +28,14 @@ pub struct OpenAiChatTransformer;
 
 impl MessageTransformer for OpenAiChatTransformer {
     fn to_provider(
-        &self,
-        request: &ProviderRequest,
-        _model: &ModelInfo,
+        &self, request: &ProviderRequest, _model: &ModelInfo,
     ) -> Result<serde_json::Value, ProviderError> {
         use serde_json::json;
 
-        let messages =
-            OpenAiProvider::to_openai_messages_pub(&request.messages, request.system_prompt.as_ref());
+        let messages = OpenAiProvider::to_openai_messages_pub(
+            &request.messages,
+            request.system_prompt.as_ref(),
+        );
         let tools = OpenAiProvider::to_openai_tools_pub(&request.tools);
 
         let mut body = json!({
@@ -59,8 +62,7 @@ impl MessageTransformer for OpenAiChatTransformer {
     }
 
     fn from_provider(
-        &self,
-        response: &serde_json::Value,
+        &self, response: &serde_json::Value,
     ) -> Result<ProviderResponse, ProviderError> {
         let openai_id = ProviderId::new(ProviderId::OPENAI);
         OpenAiProvider::parse_non_streaming_response_pub(response, &openai_id)

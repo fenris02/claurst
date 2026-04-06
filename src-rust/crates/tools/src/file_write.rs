@@ -1,10 +1,11 @@
 // FileWrite tool: write/create files.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::debug;
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 pub struct FileWriteTool;
 
@@ -57,11 +58,9 @@ impl Tool for FileWriteTool {
         debug!(path = %path.display(), "Writing file");
 
         // Permission check
-        if let Err(e) = ctx.check_permission(
-            self.name(),
-            &format!("Write {}", path.display()),
-            false,
-        ) {
+        if let Err(e) =
+            ctx.check_permission(self.name(), &format!("Write {}", path.display()), false)
+        {
             return ToolResult::error(e.to_string());
         }
 
@@ -87,7 +86,7 @@ impl Tool for FileWriteTool {
                         "Failed to read existing file {}: {}",
                         path.display(),
                         e
-                    ))
+                    ));
                 }
             }
         } else {
@@ -97,11 +96,7 @@ impl Tool for FileWriteTool {
 
         // Write the file
         if let Err(e) = tokio::fs::write(&path, &params.content).await {
-            return ToolResult::error(format!(
-                "Failed to write file {}: {}",
-                path.display(),
-                e
-            ));
+            return ToolResult::error(format!("Failed to write file {}: {}", path.display(), e));
         }
 
         ctx.record_file_change(

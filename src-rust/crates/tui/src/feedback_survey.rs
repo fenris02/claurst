@@ -1,10 +1,12 @@
 // feedback_survey.rs — Session quality survey overlay matching TS FeedbackSurvey.tsx
 
-use ratatui::buffer::Buffer;
-use ratatui::layout::{Alignment, Rect};
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::{
+    buffer::Buffer,
+    layout::{Alignment, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph},
+};
 
 use crate::overlays::centered_rect;
 
@@ -121,11 +123,7 @@ impl Default for FeedbackSurveyState {
 // ---------------------------------------------------------------------------
 
 /// Render the feedback survey as a centered floating dialog.
-pub fn render_feedback_survey(
-    state: &FeedbackSurveyState,
-    area: Rect,
-    buf: &mut Buffer,
-) {
+pub fn render_feedback_survey(state: &FeedbackSurveyState, area: Rect, buf: &mut Buffer) {
     if !state.visible {
         return;
     }
@@ -153,13 +151,31 @@ pub fn render_feedback_survey(
                 Line::from(""),
                 Line::from(vec![
                     Span::raw("  "),
-                    Span::styled("1", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "1",
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    ),
                     Span::raw(" Bad   "),
-                    Span::styled("2", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "2",
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::raw(" Fine   "),
-                    Span::styled("3", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "3",
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::raw(" Good   "),
-                    Span::styled("0", Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "0",
+                        Style::default()
+                            .fg(Color::DarkGray)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::raw(" Dismiss"),
                 ]),
             ],
@@ -175,11 +191,24 @@ pub fn render_feedback_survey(
                 Line::from(""),
                 Line::from(vec![
                     Span::raw("  "),
-                    Span::styled("1", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "1",
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::raw(" Yes   "),
-                    Span::styled("2", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "2",
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    ),
                     Span::raw(" No   "),
-                    Span::styled("3", Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "3",
+                        Style::default()
+                            .fg(Color::DarkGray)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::raw(" Don't ask again"),
                 ]),
             ],

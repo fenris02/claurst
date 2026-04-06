@@ -1,10 +1,11 @@
 // FileRead tool: read files with optional line range, image support, PDF page ranges.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::debug;
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 pub struct FileReadTool;
 
@@ -115,10 +116,7 @@ impl Tool for FileReadTool {
         };
 
         if content.is_empty() {
-            return ToolResult::success(format!(
-                "[File {} exists but is empty]",
-                path.display()
-            ));
+            return ToolResult::success(format!("[File {} exists but is empty]", path.display()));
         }
 
         let lines: Vec<&str> = content.lines().collect();

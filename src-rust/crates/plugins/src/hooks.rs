@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
+
 /// Plugin hook execution — ported from `loadPluginHooks.ts`.
 ///
 /// Hooks let plugins run shell commands in response to lifecycle events.
 /// This module defines the data model and the synchronous dispatch helper.
 use crate::manifest::{HookEventKind, PluginHookMatcher, PluginHooksConfig};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // Registered hook set
@@ -37,10 +39,7 @@ pub type HookRegistry = HashMap<String, Vec<RegisteredHook>>;
 /// Convert raw `PluginHooksConfig` (from `hooks/hooks.json` or inline in the
 /// manifest) into `RegisteredHook` entries and merge them into `registry`.
 pub fn register_plugin_hooks(
-    config: &PluginHooksConfig,
-    plugin_root: &str,
-    plugin_name: &str,
-    plugin_source: &str,
+    config: &PluginHooksConfig, plugin_root: &str, plugin_name: &str, plugin_source: &str,
     registry: &mut HookRegistry,
 ) {
     for (event_name, matchers) in &config.events {
@@ -82,7 +81,10 @@ pub fn parse_hooks_value(value: &serde_json::Value) -> Option<PluginHooksConfig>
             .and_then(|d| d.as_str())
             .map(String::from);
         let events = parse_hooks_events_map(inner)?;
-        return Some(PluginHooksConfig { description, events });
+        return Some(PluginHooksConfig {
+            description,
+            events,
+        });
     }
 
     // Fall back: the whole value is the events map.
@@ -160,8 +162,10 @@ pub enum HookOutcome {
 /// This is a synchronous wrapper around `std::process::Command`.  For
 /// real-world async usage the caller should spawn a blocking task.
 pub fn run_hook_sync(hook: &RegisteredHook, event_json: &str) -> HookOutcome {
-    use std::io::Write;
-    use std::process::{Command, Stdio};
+    use std::{
+        io::Write,
+        process::{Command, Stdio},
+    };
 
     let mut child = match Command::new(if cfg!(windows) { "cmd" } else { "sh" })
         .args(if cfg!(windows) {
@@ -241,10 +245,7 @@ pub fn event_key(kind: &HookEventKind) -> String {
 /// All matching hooks run concurrently; results are collected.
 /// Non-blocking: non-zero exit logs a warning but doesn't fail the tool call.
 pub async fn dispatch_post_tool_hooks(
-    registry: &HookRegistry,
-    tool_name: &str,
-    tool_input_json: &str,
-    tool_result_json: &str,
+    registry: &HookRegistry, tool_name: &str, tool_input_json: &str, tool_result_json: &str,
 ) -> Vec<String> {
     let event_name = event_key(&HookEventKind::PostToolUse);
 
@@ -273,9 +274,8 @@ pub async fn dispatch_post_tool_hooks(
         let tn = tool_name.clone();
         let ti = tool_input.clone();
         let tr = tool_result.clone();
-        let task = tokio::task::spawn_blocking(move || {
-            run_post_tool_hook(&hook.command, &tn, &ti, &tr)
-        });
+        let task =
+            tokio::task::spawn_blocking(move || run_post_tool_hook(&hook.command, &tn, &ti, &tr));
         tasks.push(task);
     }
 
@@ -292,10 +292,7 @@ pub async fn dispatch_post_tool_hooks(
 
 /// Run a single PostToolUse hook command synchronously.
 fn run_post_tool_hook(
-    command: &str,
-    tool_name: &str,
-    tool_input_json: &str,
-    tool_result_json: &str,
+    command: &str, tool_name: &str, tool_input_json: &str, tool_result_json: &str,
 ) -> Result<String, std::io::Error> {
     let output = std::process::Command::new(if cfg!(windows) { "cmd" } else { "sh" })
         .args(if cfg!(windows) {

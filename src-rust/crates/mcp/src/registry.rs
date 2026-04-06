@@ -6,8 +6,9 @@
 // check from TS is replicated by `is_official_mcp_url`, which performs a
 // lazy HTTP fetch and caches the result.
 
-use once_cell::sync::OnceCell;
 use std::collections::HashSet;
+
+use once_cell::sync::OnceCell;
 
 // ---------------------------------------------------------------------------
 // Static registry

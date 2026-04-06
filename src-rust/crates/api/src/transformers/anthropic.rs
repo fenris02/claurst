@@ -5,14 +5,19 @@
 // `to_provider` serialises the request fields directly to the Anthropic v1
 // messages schema and `from_provider` parses the standard Anthropic response.
 
-use crate::provider::ModelInfo;
-use crate::provider_error::ProviderError;
-use crate::provider_types::{ProviderRequest, ProviderResponse, StopReason};
-use crate::transform::MessageTransformer;
-use crate::types::{ApiMessage, ApiToolDefinition};
-use crate::providers::message_normalization::normalize_anthropic_messages;
-use claurst_core::provider_id::ProviderId;
-use claurst_core::types::{ContentBlock, UsageInfo};
+use claurst_core::{
+    provider_id::ProviderId,
+    types::{ContentBlock, UsageInfo},
+};
+
+use crate::{
+    provider::ModelInfo,
+    provider_error::ProviderError,
+    provider_types::{ProviderRequest, ProviderResponse, StopReason},
+    providers::message_normalization::normalize_anthropic_messages,
+    transform::MessageTransformer,
+    types::{ApiMessage, ApiToolDefinition},
+};
 
 // ---------------------------------------------------------------------------
 // AnthropicTransformer
@@ -29,9 +34,7 @@ pub struct AnthropicTransformer;
 
 impl MessageTransformer for AnthropicTransformer {
     fn to_provider(
-        &self,
-        request: &ProviderRequest,
-        _model: &ModelInfo,
+        &self, request: &ProviderRequest, _model: &ModelInfo,
     ) -> Result<serde_json::Value, ProviderError> {
         use serde_json::json;
 
@@ -39,21 +42,17 @@ impl MessageTransformer for AnthropicTransformer {
         let normalized_messages = normalize_anthropic_messages(&request.messages);
         let api_messages: Vec<ApiMessage> =
             normalized_messages.iter().map(ApiMessage::from).collect();
-        let messages_json = serde_json::to_value(&api_messages).map_err(|e| {
-            ProviderError::Other {
+        let messages_json =
+            serde_json::to_value(&api_messages).map_err(|e| ProviderError::Other {
                 provider: ProviderId::new(ProviderId::ANTHROPIC),
                 message: format!("failed to serialise messages: {}", e),
                 status: None,
                 body: None,
-            }
-        })?;
+            })?;
 
         // Convert tools to API wire format.
-        let api_tools: Vec<ApiToolDefinition> = request
-            .tools
-            .iter()
-            .map(ApiToolDefinition::from)
-            .collect();
+        let api_tools: Vec<ApiToolDefinition> =
+            request.tools.iter().map(ApiToolDefinition::from).collect();
 
         let mut body = json!({
             "model": request.model,
@@ -77,14 +76,13 @@ impl MessageTransformer for AnthropicTransformer {
 
         // Tools.
         if !request.tools.is_empty() {
-            let tools_json = serde_json::to_value(&api_tools).map_err(|e| {
-                ProviderError::Other {
+            let tools_json =
+                serde_json::to_value(&api_tools).map_err(|e| ProviderError::Other {
                     provider: ProviderId::new(ProviderId::ANTHROPIC),
                     message: format!("failed to serialise tools: {}", e),
                     status: None,
                     body: None,
-                }
-            })?;
+                })?;
             body["tools"] = tools_json;
         }
 
@@ -112,8 +110,7 @@ impl MessageTransformer for AnthropicTransformer {
     }
 
     fn from_provider(
-        &self,
-        response: &serde_json::Value,
+        &self, response: &serde_json::Value,
     ) -> Result<ProviderResponse, ProviderError> {
         let anthropic_id = ProviderId::new(ProviderId::ANTHROPIC);
 
@@ -213,7 +210,10 @@ impl MessageTransformer for AnthropicTransformer {
                         .and_then(|v| v.as_str())
                         .unwrap_or("")
                         .to_string();
-                    content.push(ContentBlock::Thinking { thinking, signature });
+                    content.push(ContentBlock::Thinking {
+                        thinking,
+                        signature,
+                    });
                 }
                 // redacted_thinking, citations, etc. — skip silently for now.
                 _ => {}

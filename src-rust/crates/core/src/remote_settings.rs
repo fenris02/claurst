@@ -8,15 +8,16 @@
 //
 // Eligibility:
 //   - API key users: always eligible
-//   - OAuth users: only Enterprise/Team (server decides; we just try and accept
-//     empty/204 as "no settings configured")
+//   - OAuth users: only Enterprise/Team (server decides; we just try and accept empty/204 as "no
+//     settings configured")
+
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::{path::PathBuf, sync::Arc, time::Duration};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
@@ -145,14 +146,8 @@ impl RemoteSettingsManager {
         }
         if let Some(ref token) = self.config.oauth_token {
             if !token.is_empty() {
-                headers.insert(
-                    "Authorization".to_string(),
-                    format!("Bearer {}", token),
-                );
-                headers.insert(
-                    "anthropic-beta".to_string(),
-                    "oauth-2025-04-20".to_string(),
-                );
+                headers.insert("Authorization".to_string(), format!("Bearer {}", token));
+                headers.insert("anthropic-beta".to_string(), "oauth-2025-04-20".to_string());
                 return Some(headers);
             }
         }
@@ -229,15 +224,14 @@ impl RemoteSettingsManager {
 
         // Try to parse as the expected response shape, but be permissive —
         // accept raw settings object if the wrapper is missing.
-        let (settings, _checksum) = if let Ok(parsed) =
-            serde_json::from_value::<RemoteSettingsResponse>(body.clone())
-        {
-            (parsed.settings, parsed.checksum)
-        } else if body.is_object() {
-            (body, None)
-        } else {
-            anyhow::bail!("Remote settings: unexpected response shape");
-        };
+        let (settings, _checksum) =
+            if let Ok(parsed) = serde_json::from_value::<RemoteSettingsResponse>(body.clone()) {
+                (parsed.settings, parsed.checksum)
+            } else if body.is_object() {
+                (body, None)
+            } else {
+                anyhow::bail!("Remote settings: unexpected response shape");
+            };
 
         Ok(Some(settings))
     }
@@ -291,10 +285,7 @@ impl RemoteSettingsManager {
             .as_ref()
             .map(|s| compute_checksum_from_settings(s));
 
-        match self
-            .fetch_with_retry(cached_checksum.as_deref())
-            .await
-        {
+        match self.fetch_with_retry(cached_checksum.as_deref()).await {
             Ok(Some(new_settings)) => {
                 // Got fresh settings — persist and return.
                 let checksum = compute_checksum_from_settings(&new_settings);
@@ -426,8 +417,9 @@ fn retry_delay(attempt: u32) -> Duration {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_sort_keys_deep_flat() {

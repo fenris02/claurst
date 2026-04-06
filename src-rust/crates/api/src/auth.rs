@@ -5,8 +5,7 @@
 
 use async_trait::async_trait;
 
-use crate::provider_error::ProviderError;
-use crate::provider_types::AuthMethod;
+use crate::{provider_error::ProviderError, provider_types::AuthMethod};
 
 // ---------------------------------------------------------------------------
 // LoginFlow

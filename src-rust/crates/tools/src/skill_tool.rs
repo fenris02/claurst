@@ -11,13 +11,17 @@
 // Supports $ARGUMENTS placeholder substitution.
 // Use skill="list" to discover available skills.
 
-use crate::bundled_skills::{expand_prompt, find_bundled_skill, user_invocable_skills};
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
+use std::path::PathBuf;
+
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
-use std::path::PathBuf;
+use serde_json::{Value, json};
 use tracing::debug;
+
+use crate::{
+    PermissionLevel, Tool, ToolContext, ToolResult,
+    bundled_skills::{expand_prompt, find_bundled_skill, user_invocable_skills},
+};
 
 pub struct SkillTool;
 
@@ -30,7 +34,9 @@ struct SkillInput {
 
 #[async_trait]
 impl Tool for SkillTool {
-    fn name(&self) -> &str { "Skill" }
+    fn name(&self) -> &str {
+        "Skill"
+    }
 
     fn description(&self) -> &str {
         "Execute a skill (custom prompt template) by name. \
@@ -39,7 +45,9 @@ impl Tool for SkillTool {
          The expanded skill prompt is returned for you to act on."
     }
 
-    fn permission_level(&self) -> PermissionLevel { PermissionLevel::ReadOnly }
+    fn permission_level(&self) -> PermissionLevel {
+        PermissionLevel::ReadOnly
+    }
 
     fn input_schema(&self) -> Value {
         json!({
@@ -121,9 +129,7 @@ impl Tool for SkillTool {
 // ---------------------------------------------------------------------------
 
 fn skill_search_dirs(ctx: &ToolContext) -> Vec<PathBuf> {
-    let mut dirs = vec![
-        ctx.working_dir.join(".claurst").join("commands"),
-    ];
+    let mut dirs = vec![ctx.working_dir.join(".claurst").join("commands")];
     if let Some(home) = dirs::home_dir() {
         dirs.push(home.join(".claurst").join("commands"));
     }

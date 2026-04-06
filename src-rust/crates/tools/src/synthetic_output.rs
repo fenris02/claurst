@@ -12,9 +12,10 @@
 // In the Rust port it simply validates that it received a JSON object and
 // echoes back the confirmation string, matching the TS call() behaviour.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 pub struct SyntheticOutputTool;
 

@@ -3,12 +3,15 @@
 // Provides a feature flag manager that fetches flags from GrowthBook API,
 // caches them locally, and provides a simple API for checking flag values.
 
-use anyhow::{anyhow, Context, Result};
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
+
+use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
 use tokio::fs;
 use tracing::{debug, warn};
 

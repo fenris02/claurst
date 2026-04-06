@@ -47,10 +47,7 @@ impl SqliteSessionStore {
     /// Insert or replace a session record.  `created_at` is preserved on
     /// UPDATE so only `updated_at` changes.
     pub fn save_session(
-        &self,
-        session_id: &str,
-        title: Option<&str>,
-        model: &str,
+        &self, session_id: &str, title: Option<&str>, model: &str,
     ) -> anyhow::Result<()> {
         let now = chrono::Utc::now().to_rfc3339();
         self.conn.execute(
@@ -68,12 +65,7 @@ impl SqliteSessionStore {
     /// Append a message to the given session (idempotent on `msg_id`).
     /// Also bumps `sessions.message_count` and `sessions.updated_at`.
     pub fn save_message(
-        &self,
-        session_id: &str,
-        msg_id: &str,
-        role: &str,
-        content: &str,
-        cost_usd: Option<f64>,
+        &self, session_id: &str, msg_id: &str, role: &str, content: &str, cost_usd: Option<f64>,
     ) -> anyhow::Result<()> {
         let now = chrono::Utc::now().to_rfc3339();
         // Insert the message; ignore if already stored.

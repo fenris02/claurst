@@ -8,26 +8,24 @@
 // One-shot tasks (recurring=false) are automatically removed from the store
 // by `pop_due_tasks` after they are returned.
 
-use crate::{QueryConfig, QueryOutcome, run_query_loop};
-use claurst_core::types::Message;
-use claurst_tools::Tool;
-use claurst_tools::ToolContext;
-use chrono::Timelike;
 use std::sync::Arc;
+
+use chrono::Timelike;
+use claurst_core::types::Message;
+use claurst_tools::{Tool, ToolContext};
 use tokio::time::{Duration, sleep};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
+
+use crate::{QueryConfig, QueryOutcome, run_query_loop};
 
 /// Start the background cron scheduler.
 ///
 /// Returns immediately; the scheduler runs as a detached tokio task.
 /// Call `cancel.cancel()` to stop it gracefully.
 pub fn start_cron_scheduler(
-    client: Arc<claurst_api::AnthropicClient>,
-    tools: Arc<Vec<Box<dyn Tool>>>,
-    tool_ctx: ToolContext,
-    query_config: QueryConfig,
-    cancel: CancellationToken,
+    client: Arc<claurst_api::AnthropicClient>, tools: Arc<Vec<Box<dyn Tool>>>,
+    tool_ctx: ToolContext, query_config: QueryConfig, cancel: CancellationToken,
 ) {
     tokio::spawn(async move {
         run_scheduler_loop(client, tools, tool_ctx, query_config, cancel).await;
@@ -35,11 +33,8 @@ pub fn start_cron_scheduler(
 }
 
 async fn run_scheduler_loop(
-    client: Arc<claurst_api::AnthropicClient>,
-    tools: Arc<Vec<Box<dyn Tool>>>,
-    tool_ctx: ToolContext,
-    query_config: QueryConfig,
-    cancel: CancellationToken,
+    client: Arc<claurst_api::AnthropicClient>, tools: Arc<Vec<Box<dyn Tool>>>,
+    tool_ctx: ToolContext, query_config: QueryConfig, cancel: CancellationToken,
 ) {
     info!("Cron scheduler started");
 
@@ -108,7 +103,10 @@ async fn run_scheduler_loop(
                     QueryOutcome::Cancelled => {
                         debug!(id = %task_id, "Cron task cancelled");
                     }
-                    QueryOutcome::BudgetExceeded { cost_usd, limit_usd } => {
+                    QueryOutcome::BudgetExceeded {
+                        cost_usd,
+                        limit_usd,
+                    } => {
                         eprintln!(
                             "[cron] task {} budget exceeded: spent ${:.4} of ${:.4}",
                             task_id, cost_usd, limit_usd

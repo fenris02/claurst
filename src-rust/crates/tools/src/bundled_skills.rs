@@ -95,7 +95,6 @@ $ARGUMENTS_SUFFIX"#,
         allowed_tools: None,
         user_invocable: true,
     },
-
     // -----------------------------------------------------------------------
     // remember
     // -----------------------------------------------------------------------
@@ -103,7 +102,9 @@ $ARGUMENTS_SUFFIX"#,
         name: "remember",
         description: "Review auto-memory entries and propose promotions to AGENTS.md, AGENTS.local.md, or shared memory.",
         aliases: &["mem", "save"],
-        when_to_use: Some("When the user wants to review, organise, or promote their auto-memory entries."),
+        when_to_use: Some(
+            "When the user wants to review, organise, or promote their auto-memory entries.",
+        ),
         argument_hint: Some("[additional context]"),
         prompt_template: r#"# Memory Review
 
@@ -141,7 +142,6 @@ $ARGUMENTS_SUFFIX"#,
         allowed_tools: Some(&["Read", "Write", "Edit", "Glob"]),
         user_invocable: true,
     },
-
     // -----------------------------------------------------------------------
     // debug
     // -----------------------------------------------------------------------
@@ -179,7 +179,6 @@ Read the relevant files before making any changes."#,
         allowed_tools: Some(&["Read", "Grep", "Glob"]),
         user_invocable: true,
     },
-
     // -----------------------------------------------------------------------
     // stuck
     // -----------------------------------------------------------------------
@@ -201,7 +200,6 @@ Be direct and actionable. Focus on unblocking, not on explaining concepts."#,
         allowed_tools: None,
         user_invocable: true,
     },
-
     // -----------------------------------------------------------------------
     // batch
     // -----------------------------------------------------------------------
@@ -209,7 +207,9 @@ Be direct and actionable. Focus on unblocking, not on explaining concepts."#,
         name: "batch",
         description: "Research and plan a large-scale change, then execute it in parallel across isolated worktree agents that each open a PR.",
         aliases: &[],
-        when_to_use: Some("When the user wants to make a sweeping, mechanical change across many files that can be decomposed into independent parallel units."),
+        when_to_use: Some(
+            "When the user wants to make a sweeping, mechanical change across many files that can be decomposed into independent parallel units.",
+        ),
         argument_hint: Some("<instruction>"),
         prompt_template: r#"# Batch: Parallel Work Orchestration
 
@@ -247,7 +247,6 @@ a status table. When all agents have reported, print a final summary."#,
         allowed_tools: None,
         user_invocable: true,
     },
-
     // -----------------------------------------------------------------------
     // verify
     // -----------------------------------------------------------------------
@@ -270,7 +269,6 @@ a status table. When all agents have reported, print a final summary."#,
         allowed_tools: None,
         user_invocable: true,
     },
-
     // -----------------------------------------------------------------------
     // update-config
     // -----------------------------------------------------------------------
@@ -278,7 +276,9 @@ a status table. When all agents have reported, print a final summary."#,
         name: "update-config",
         description: "Configure Claurst settings (hooks, permissions, env vars, behaviours) via settings.json.",
         aliases: &["config-update", "settings"],
-        when_to_use: Some("When the user wants to configure automated behaviours, permissions, or settings."),
+        when_to_use: Some(
+            "When the user wants to configure automated behaviours, permissions, or settings.",
+        ),
         argument_hint: Some("<what to configure>"),
         prompt_template: r#"# Update Config Skill
 
@@ -309,7 +309,6 @@ $ARGUMENTS"#,
         allowed_tools: Some(&["Read", "Write", "Edit", "Bash"]),
         user_invocable: true,
     },
-
     // -----------------------------------------------------------------------
     // claude-api
     // -----------------------------------------------------------------------
@@ -317,7 +316,9 @@ $ARGUMENTS"#,
         name: "claude-api",
         description: "Build apps with the Claude API or Anthropic SDK.",
         aliases: &["api", "anthropic-sdk"],
-        when_to_use: Some("When the user wants to use the Claude API, Anthropic SDK, or build Claude-powered apps."),
+        when_to_use: Some(
+            "When the user wants to use the Claude API, Anthropic SDK, or build Claude-powered apps.",
+        ),
         argument_hint: Some("[what to build]"),
         prompt_template: r#"# Build a Claude API Integration
 
@@ -361,7 +362,6 @@ Use async/await patterns. Follow SDK best practices."#,
         allowed_tools: Some(&["Read", "Grep", "Glob", "WebFetch"]),
         user_invocable: true,
     },
-
     // -----------------------------------------------------------------------
     // loop
     // -----------------------------------------------------------------------
@@ -415,9 +415,9 @@ $ARGUMENTS"#,
 /// Find a bundled skill by name or alias (case-insensitive).
 pub fn find_bundled_skill(name: &str) -> Option<&'static BundledSkill> {
     let lower = name.to_lowercase();
-    BUNDLED_SKILLS.iter().find(|s| {
-        s.name == lower || s.aliases.iter().any(|a| *a == lower)
-    })
+    BUNDLED_SKILLS
+        .iter()
+        .find(|s| s.name == lower || s.aliases.iter().any(|a| *a == lower))
 }
 
 /// Return `(name, description)` pairs for all user-invocable bundled skills.
@@ -488,11 +488,7 @@ mod tests {
     fn skill_names_are_unique() {
         let mut seen = std::collections::HashSet::new();
         for s in BUNDLED_SKILLS {
-            assert!(
-                seen.insert(s.name),
-                "duplicate skill name: {}",
-                s.name
-            );
+            assert!(seen.insert(s.name), "duplicate skill name: {}", s.name);
         }
     }
 

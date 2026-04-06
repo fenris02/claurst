@@ -3,9 +3,10 @@
 //! Provides SHA-256 hashing, UUID generation, base64url encoding,
 //! and work secret generation.
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use sha2::{Digest, Sha256};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Compute the SHA-256 hash of `data` and return it as a lowercase hex string.
 pub fn sha256_hex(data: &[u8]) -> String {

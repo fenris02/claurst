@@ -6,16 +6,18 @@
 //
 //   - Shown at most 3 times per user (seen_count guard).
 //   - Three choices: "Open in Claurst Code Desktop" (Try), "Not now", "Don't ask again".
-//   - "Try" acknowledges and closes (CLI cannot actually launch the desktop app,
-//     so we treat it the same as "Not now" but could be extended).
+//   - "Try" acknowledges and closes (CLI cannot actually launch the desktop app, so we treat it the
+//     same as "Not now" but could be extended).
 //   - "Don't ask again" sets the dismissed flag permanently.
 //   - Esc / "Not now" closes without permanently dismissing.
 
-use ratatui::buffer::Buffer;
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, Paragraph, Widget},
+};
 
 // ---------------------------------------------------------------------------
 // Platform guard
@@ -23,8 +25,7 @@ use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget};
 
 /// Returns true when Claurst Desktop is a supported platform option.
 pub fn is_desktop_supported_platform() -> bool {
-    cfg!(target_os = "macos")
-        || (cfg!(target_os = "windows") && cfg!(target_arch = "x86_64"))
+    cfg!(target_os = "macos") || (cfg!(target_os = "windows") && cfg!(target_arch = "x86_64"))
 }
 
 // ---------------------------------------------------------------------------
@@ -41,6 +42,8 @@ pub enum DesktopUpsellSelection {
 }
 
 impl DesktopUpsellSelection {
+    const ALL: [Self; 3] = [Self::Try, Self::NotNow, Self::Never];
+
     fn label(self) -> &'static str {
         match self {
             Self::Try => "Open in Claurst Code Desktop",
@@ -48,8 +51,6 @@ impl DesktopUpsellSelection {
             Self::Never => "Don't ask again",
         }
     }
-
-    const ALL: [Self; 3] = [Self::Try, Self::NotNow, Self::Never];
 }
 
 /// Desktop upsell startup dialog state.
@@ -133,9 +134,7 @@ impl DesktopUpsellStartupState {
 
 /// Render the desktop upsell startup dialog as a centered modal.
 pub fn render_desktop_upsell_startup(
-    state: &DesktopUpsellStartupState,
-    area: Rect,
-    buf: &mut Buffer,
+    state: &DesktopUpsellStartupState, area: Rect, buf: &mut Buffer,
 ) {
     if !state.visible || area.height < 8 || area.width < 40 {
         return;
@@ -145,7 +144,12 @@ pub fn render_desktop_upsell_startup(
     let dialog_h = 12u16.min(area.height.saturating_sub(2));
     let x = area.x + (area.width.saturating_sub(dialog_w)) / 2;
     let y = area.y + (area.height.saturating_sub(dialog_h)) / 2;
-    let dialog_area = Rect { x, y, width: dialog_w, height: dialog_h };
+    let dialog_area = Rect {
+        x,
+        y,
+        width: dialog_w,
+        height: dialog_h,
+    };
 
     Clear.render(dialog_area, buf);
 
@@ -212,8 +216,9 @@ pub fn render_desktop_upsell_startup(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ratatui::layout::Rect;
+
+    use super::*;
 
     #[test]
     fn desktop_upsell_show_increments_count() {
@@ -292,20 +297,40 @@ mod tests {
     fn desktop_upsell_render_smoke() {
         let mut state = DesktopUpsellStartupState::new();
         state.visible = true;
-        let area = Rect { x: 0, y: 0, width: 80, height: 24 };
+        let area = Rect {
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 24,
+        };
         let mut buf = ratatui::buffer::Buffer::empty(area);
         render_desktop_upsell_startup(&state, area, &mut buf);
-        let rendered = buf.content.iter().map(|c| c.symbol()).collect::<Vec<_>>().join("");
+        let rendered = buf
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<Vec<_>>()
+            .join("");
         assert!(rendered.contains("Claurst Code Desktop") || rendered.contains("visual diffs"));
     }
 
     #[test]
     fn desktop_upsell_not_rendered_when_invisible() {
         let state = DesktopUpsellStartupState::new();
-        let area = Rect { x: 0, y: 0, width: 80, height: 24 };
+        let area = Rect {
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 24,
+        };
         let mut buf = ratatui::buffer::Buffer::empty(area);
         render_desktop_upsell_startup(&state, area, &mut buf);
-        let rendered = buf.content.iter().map(|c| c.symbol()).collect::<Vec<_>>().join("");
+        let rendered = buf
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<Vec<_>>()
+            .join("");
         assert!(!rendered.contains("visual diffs"));
     }
 }

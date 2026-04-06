@@ -21,9 +21,7 @@ pub struct DeviceCodeResponse {
 /// Returns the device code response containing the user code and verification
 /// URI that should be shown to the user.
 pub async fn request_device_code(
-    client_id: &str,
-    scope: &str,
-    device_code_url: &str,
+    client_id: &str, scope: &str, device_code_url: &str,
 ) -> Result<DeviceCodeResponse, String> {
     let client = reqwest::Client::new();
     let resp = client
@@ -48,11 +46,7 @@ pub async fn request_device_code(
 ///
 /// Returns the access token on success.
 pub async fn poll_for_token(
-    client_id: &str,
-    device_code: &str,
-    token_url: &str,
-    interval: u64,
-    timeout_secs: u64,
+    client_id: &str, device_code: &str, token_url: &str, interval: u64, timeout_secs: u64,
 ) -> Result<String, String> {
     let client = reqwest::Client::new();
     let start = std::time::Instant::now();

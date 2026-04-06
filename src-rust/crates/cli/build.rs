@@ -17,7 +17,9 @@ fn main() {
     // Package/distribution metadata
     println!("cargo:rustc-env=PACKAGE_URL=claurst-source-snapshot");
     println!("cargo:rustc-env=FEEDBACK_CHANNEL=github");
-    println!("cargo:rustc-env=ISSUES_EXPLAINER=This build does not include Anthropic internal issue routing.");
+    println!(
+        "cargo:rustc-env=ISSUES_EXPLAINER=This build does not include Anthropic internal issue routing."
+    );
 
     // Trigger rebuild if git HEAD changes
     println!("cargo:rerun-if-changed=.git/HEAD");

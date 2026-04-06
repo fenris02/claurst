@@ -3,15 +3,17 @@
 // Shows a list of available themes with colour swatches. Arrow keys navigate,
 // Enter selects, Esc cancels.
 
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
-use ratatui::Frame;
+use ratatui::{
+    Frame,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::Paragraph,
+};
 
 use crate::overlays::{
-    begin_modal_frame, modal_header_line_area, render_modal_title_frame, CLAURST_ACCENT,
-    CLAURST_MUTED, CLAURST_PANEL_BG, CLAURST_TEXT,
+    CLAURST_ACCENT, CLAURST_MUTED, CLAURST_PANEL_BG, CLAURST_TEXT, begin_modal_frame,
+    modal_header_line_area, render_modal_title_frame,
 };
 
 // ---------------------------------------------------------------------------
@@ -116,12 +118,7 @@ fn builtin_themes() -> Vec<ThemeOption> {
             name: "light".to_string(),
             label: "Light".to_string(),
             description: "Light background with dark text".to_string(),
-            swatch: [
-                Color::White,
-                Color::Blue,
-                Color::DarkGray,
-                Color::Black,
-            ],
+            swatch: [Color::White, Color::Blue, Color::DarkGray, Color::Black],
         },
         ThemeOption {
             name: "solarized".to_string(),
@@ -173,8 +170,8 @@ fn builtin_themes() -> Vec<ThemeOption> {
             description: "Red-green color blind friendly — blue/yellow/gray palette".to_string(),
             swatch: [
                 Color::Rgb(18, 18, 18),
-                Color::Rgb(0, 122, 204),  // Blue
-                Color::Rgb(255, 180, 0),  // Gold/Yellow
+                Color::Rgb(0, 122, 204),   // Blue
+                Color::Rgb(255, 180, 0),   // Gold/Yellow
                 Color::Rgb(200, 200, 200), // Light gray
             ],
         },
@@ -208,9 +205,21 @@ pub fn render_theme_screen(frame: &mut Frame, screen: &ThemeScreen, area: Rect) 
 
     for (i, theme) in screen.themes.iter().enumerate() {
         let is_selected = i == screen.selected_idx;
-        let bg = if is_selected { CLAURST_ACCENT } else { CLAURST_PANEL_BG };
-        let fg = if is_selected { Color::White } else { CLAURST_TEXT };
-        let desc_fg = if is_selected { Color::Rgb(248, 220, 236) } else { CLAURST_MUTED };
+        let bg = if is_selected {
+            CLAURST_ACCENT
+        } else {
+            CLAURST_PANEL_BG
+        };
+        let fg = if is_selected {
+            Color::White
+        } else {
+            CLAURST_TEXT
+        };
+        let desc_fg = if is_selected {
+            Color::Rgb(248, 220, 236)
+        } else {
+            CLAURST_MUTED
+        };
 
         // Build the swatch using block characters with background colour
         let swatch_spans: Vec<Span> = theme
@@ -247,7 +256,9 @@ pub fn render_theme_screen(frame: &mut Frame, screen: &ThemeScreen, area: Rect) 
     frame.render_widget(
         Paragraph::new(Line::from(vec![Span::styled(
             " ↑↓ navigate  ·  enter apply  ·  esc cancel",
-            Style::default().fg(CLAURST_MUTED).add_modifier(Modifier::ITALIC),
+            Style::default()
+                .fg(CLAURST_MUTED)
+                .add_modifier(Modifier::ITALIC),
         )])),
         layout.footer_area,
     );
@@ -260,8 +271,7 @@ pub fn render_theme_screen(frame: &mut Frame, screen: &ThemeScreen, area: Rect) 
 /// Returns the selected theme name when the user confirms, `None` otherwise.
 /// Call this from the app's key handler when `theme_screen.visible`.
 pub fn handle_theme_key(
-    screen: &mut ThemeScreen,
-    key: crossterm::event::KeyEvent,
+    screen: &mut ThemeScreen, key: crossterm::event::KeyEvent,
 ) -> Option<String> {
     use crossterm::event::KeyCode;
 
@@ -293,8 +303,9 @@ pub fn handle_theme_key(
 
 #[cfg(test)]
 mod tests {
+    use ratatui::{Terminal, backend::TestBackend};
+
     use super::*;
-    use ratatui::{backend::TestBackend, Terminal};
 
     #[test]
     fn theme_screen_renders_current_theme() {

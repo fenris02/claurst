@@ -15,26 +15,27 @@
 //  - ProviderCapabilities
 
 use std::pin::Pin;
+
 use async_stream::stream;
 use async_trait::async_trait;
-use claurst_core::provider_id::{ModelId, ProviderId};
-use claurst_core::types::{
-    ContentBlock, ImageSource, MessageContent, Role, ToolResultContent, UsageInfo,
+use claurst_core::{
+    provider_id::{ModelId, ProviderId},
+    types::{ContentBlock, ImageSource, MessageContent, Role, ToolResultContent, UsageInfo},
 };
 use futures::Stream;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::debug;
 
-use crate::error_handling::parse_error_response;
-use crate::provider::{LlmProvider, ModelInfo};
-use crate::provider_error::ProviderError;
-use crate::provider_types::{
-    ProviderCapabilities, ProviderRequest, ProviderResponse, ProviderStatus, StopReason,
-    StreamEvent, SystemPromptStyle,
-};
-use crate::provider_types::SystemPrompt;
-
 use super::request_options::merge_openai_compatible_options;
+use crate::{
+    error_handling::parse_error_response,
+    provider::{LlmProvider, ModelInfo},
+    provider_error::ProviderError,
+    provider_types::{
+        ProviderCapabilities, ProviderRequest, ProviderResponse, ProviderStatus, StopReason,
+        StreamEvent, SystemPrompt, SystemPromptStyle,
+    },
+};
 
 // ---------------------------------------------------------------------------
 // OpenAiProvider
@@ -74,9 +75,7 @@ impl OpenAiProvider {
     /// Returns `true` if the model should use the Responses API instead of
     /// Chat Completions (gpt-5+, o3, o4-mini).
     fn use_responses_api(model: &str) -> bool {
-        model.starts_with("o3")
-            || model.starts_with("o4")
-            || model.starts_with("gpt-5")
+        model.starts_with("o3") || model.starts_with("o4") || model.starts_with("gpt-5")
     }
 
     // -----------------------------------------------------------------------
@@ -85,8 +84,7 @@ impl OpenAiProvider {
 
     /// Public wrapper for Azure/Copilot providers that share the OpenAI wire format.
     pub fn to_openai_messages_pub(
-        messages: &[claurst_core::types::Message],
-        system_prompt: Option<&SystemPrompt>,
+        messages: &[claurst_core::types::Message], system_prompt: Option<&SystemPrompt>,
     ) -> Vec<Value> {
         Self::to_openai_messages(messages, system_prompt)
     }
@@ -108,8 +106,7 @@ impl OpenAiProvider {
 
     /// Public wrapper for non-streaming response parsing.
     pub fn parse_non_streaming_response_pub(
-        json: &Value,
-        provider_id: &claurst_core::provider_id::ProviderId,
+        json: &Value, provider_id: &claurst_core::provider_id::ProviderId,
     ) -> Result<crate::provider_types::ProviderResponse, crate::provider_error::ProviderError> {
         Self::parse_non_streaming_response(json, provider_id)
     }
@@ -117,8 +114,7 @@ impl OpenAiProvider {
     /// Convert a provider-agnostic [`ProviderRequest`] into the OpenAI Chat
     /// Completions `messages` array.
     fn to_openai_messages(
-        messages: &[claurst_core::types::Message],
-        system_prompt: Option<&SystemPrompt>,
+        messages: &[claurst_core::types::Message], system_prompt: Option<&SystemPrompt>,
     ) -> Vec<Value> {
         let mut result: Vec<Value> = Vec::new();
 
@@ -198,9 +194,7 @@ impl OpenAiProvider {
 
     fn user_block_to_openai_part(block: &ContentBlock) -> Option<Value> {
         match block {
-            ContentBlock::Text { text } => {
-                Some(json!({ "type": "text", "text": text }))
-            }
+            ContentBlock::Text { text } => Some(json!({ "type": "text", "text": text })),
             ContentBlock::Image { source } => {
                 let url = Self::image_source_to_url(source);
                 Some(json!({
@@ -208,7 +202,11 @@ impl OpenAiProvider {
                     "image_url": { "url": url }
                 }))
             }
-            ContentBlock::ToolResult { tool_use_id, content, is_error } => {
+            ContentBlock::ToolResult {
+                tool_use_id,
+                content,
+                is_error,
+            } => {
                 // Tool results become separate `role: tool` messages at the
                 // conversation level — handled in append_user_messages.
                 let _ = (tool_use_id, content, is_error);
@@ -224,18 +222,13 @@ impl OpenAiProvider {
             return url.clone();
         }
         // base64-encoded image
-        let media_type = source
-            .media_type
-            .as_deref()
-            .unwrap_or("image/png");
+        let media_type = source.media_type.as_deref().unwrap_or("image/png");
         let data = source.data.as_deref().unwrap_or("");
         format!("data:{};base64,{}", media_type, data)
     }
 
     /// Split assistant content blocks into (text_string, tool_calls_array).
-    fn assistant_content_to_openai(
-        content: &MessageContent,
-    ) -> (Option<String>, Vec<Value>) {
+    fn assistant_content_to_openai(content: &MessageContent) -> (Option<String>, Vec<Value>) {
         let blocks = match content {
             MessageContent::Text(t) => return (Some(t.clone()), vec![]),
             MessageContent::Blocks(b) => b,
@@ -320,9 +313,7 @@ impl OpenAiProvider {
     }
 
     /// Convert tool definitions to the OpenAI `tools` array format.
-    fn to_openai_tools(
-        tools: &[claurst_core::types::ToolDefinition],
-    ) -> Vec<Value> {
+    fn to_openai_tools(tools: &[claurst_core::types::ToolDefinition]) -> Vec<Value> {
         tools
             .iter()
             .map(|td| {
@@ -355,13 +346,9 @@ impl OpenAiProvider {
     // -----------------------------------------------------------------------
 
     async fn create_message_non_streaming(
-        &self,
-        request: &ProviderRequest,
+        &self, request: &ProviderRequest,
     ) -> Result<ProviderResponse, ProviderError> {
-        let messages = Self::to_openai_messages(
-            &request.messages,
-            request.system_prompt.as_ref(),
-        );
+        let messages = Self::to_openai_messages(&request.messages, request.system_prompt.as_ref());
         let tools = Self::to_openai_tools(&request.tools);
 
         let mut body = json!({
@@ -416,20 +403,18 @@ impl OpenAiProvider {
             return Err(self.map_http_error(status, &text));
         }
 
-        let json: Value =
-            serde_json::from_str(&text).map_err(|e| ProviderError::Other {
-                provider: self.id.clone(),
-                message: format!("Failed to parse response JSON: {}", e),
-                status: Some(status),
-                body: Some(text.clone()),
-            })?;
+        let json: Value = serde_json::from_str(&text).map_err(|e| ProviderError::Other {
+            provider: self.id.clone(),
+            message: format!("Failed to parse response JSON: {}", e),
+            status: Some(status),
+            body: Some(text.clone()),
+        })?;
 
         Self::parse_non_streaming_response(&json, &self.id)
     }
 
     fn parse_non_streaming_response(
-        json: &Value,
-        provider_id: &ProviderId,
+        json: &Value, provider_id: &ProviderId,
     ) -> Result<ProviderResponse, ProviderError> {
         let id = json
             .get("id")
@@ -490,8 +475,7 @@ impl OpenAiProvider {
                     .and_then(|f| f.get("arguments"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("{}");
-                let input: Value =
-                    serde_json::from_str(args_str).unwrap_or(json!({}));
+                let input: Value = serde_json::from_str(args_str).unwrap_or(json!({}));
                 content_blocks.push(ContentBlock::ToolUse { id, name, input });
             }
         }
@@ -533,10 +517,7 @@ impl OpenAiProvider {
             None => return UsageInfo::default(),
         };
         UsageInfo {
-            input_tokens: u
-                .get("prompt_tokens")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0),
+            input_tokens: u.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
             output_tokens: u
                 .get("completion_tokens")
                 .and_then(|v| v.as_u64())
@@ -551,13 +532,9 @@ impl OpenAiProvider {
     // -----------------------------------------------------------------------
 
     async fn do_streaming(
-        &self,
-        request: &ProviderRequest,
+        &self, request: &ProviderRequest,
     ) -> Result<reqwest::Response, ProviderError> {
-        let messages = Self::to_openai_messages(
-            &request.messages,
-            request.system_prompt.as_ref(),
-        );
+        let messages = Self::to_openai_messages(&request.messages, request.system_prompt.as_ref());
         let tools = Self::to_openai_tools(&request.tools);
 
         let mut body = json!({
@@ -614,8 +591,9 @@ impl OpenAiProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use claurst_core::types::Message;
+
+    use super::*;
 
     #[test]
     fn user_tool_results_become_tool_messages() {
@@ -634,10 +612,19 @@ mod tests {
 
         let wire = OpenAiProvider::to_openai_messages(&messages, None);
         assert_eq!(wire.len(), 2);
-        assert_eq!(wire[0].get("role").and_then(|v| v.as_str()), Some("assistant"));
+        assert_eq!(
+            wire[0].get("role").and_then(|v| v.as_str()),
+            Some("assistant")
+        );
         assert_eq!(wire[1].get("role").and_then(|v| v.as_str()), Some("tool"));
-        assert_eq!(wire[1].get("tool_call_id").and_then(|v| v.as_str()), Some("call_1"));
-        assert_eq!(wire[1].get("content").and_then(|v| v.as_str()), Some("done"));
+        assert_eq!(
+            wire[1].get("tool_call_id").and_then(|v| v.as_str()),
+            Some("call_1")
+        );
+        assert_eq!(
+            wire[1].get("content").and_then(|v| v.as_str()),
+            Some("done")
+        );
     }
 
     #[test]
@@ -657,7 +644,10 @@ mod tests {
         assert_eq!(wire.len(), 2);
         assert_eq!(wire[0].get("role").and_then(|v| v.as_str()), Some("user"));
         assert_eq!(wire[1].get("role").and_then(|v| v.as_str()), Some("tool"));
-        assert_eq!(wire[1].get("tool_call_id").and_then(|v| v.as_str()), Some("call_2"));
+        assert_eq!(
+            wire[1].get("tool_call_id").and_then(|v| v.as_str()),
+            Some("call_2")
+        );
     }
 }
 
@@ -676,8 +666,7 @@ impl LlmProvider for OpenAiProvider {
     }
 
     async fn create_message(
-        &self,
-        request: ProviderRequest,
+        &self, request: ProviderRequest,
     ) -> Result<ProviderResponse, ProviderError> {
         if Self::use_responses_api(&request.model) {
             return Err(ProviderError::InvalidRequest {
@@ -694,8 +683,7 @@ impl LlmProvider for OpenAiProvider {
     }
 
     async fn create_message_stream(
-        &self,
-        request: ProviderRequest,
+        &self, request: ProviderRequest,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>, ProviderError>
     {
         if Self::use_responses_api(&request.model) {
@@ -968,13 +956,12 @@ impl LlmProvider for OpenAiProvider {
             return Err(self.map_http_error(status, &text));
         }
 
-        let json: Value =
-            serde_json::from_str(&text).map_err(|e| ProviderError::Other {
-                provider: self.id.clone(),
-                message: format!("Failed to parse models JSON: {}", e),
-                status: Some(status),
-                body: Some(text),
-            })?;
+        let json: Value = serde_json::from_str(&text).map_err(|e| ProviderError::Other {
+            provider: self.id.clone(),
+            message: format!("Failed to parse models JSON: {}", e),
+            status: Some(status),
+            body: Some(text),
+        })?;
 
         let data = match json.get("data").and_then(|d| d.as_array()) {
             Some(d) => d,

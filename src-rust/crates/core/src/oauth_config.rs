@@ -93,7 +93,8 @@ pub const PROD_OAUTH: OAuthConfig = OAuthConfig {
     console_success_url: "https://platform.claude.com/buy_credits?returnUrl=/oauth/code/success%3Fapp%3Dclaude-code",
     claudeai_success_url: "https://platform.claude.com/oauth/code/success?app=claude-code",
     manual_redirect_url: "https://platform.claude.com/oauth/code/callback",
-    client_id: "9d1c250a-e61b-44d9-88ed-5944d1962f5e", // Anthropic's Claude Code — will not work for Claurst
+    client_id: "9d1c250a-e61b-44d9-88ed-5944d1962f5e", /* Anthropic's Claude Code — will not work
+                                                        * for Claurst */
     oauth_file_suffix: "",
     mcp_proxy_url: "https://mcp-proxy.anthropic.com",
     mcp_proxy_path: "/v1/mcp/{server_id}",
@@ -114,15 +115,15 @@ pub const STAGING_OAUTH: OAuthConfig = OAuthConfig {
     console_success_url: "https://platform.staging.ant.dev/buy_credits?returnUrl=/oauth/code/success%3Fapp%3Dclaude-code",
     claudeai_success_url: "https://platform.staging.ant.dev/oauth/code/success?app=claude-code",
     manual_redirect_url: "https://platform.staging.ant.dev/oauth/code/callback",
-    client_id: "22422756-60c9-4084-8eb7-27705fd5cf9a", // Anthropic's Claude Code staging — will not work for Claurst
+    client_id: "22422756-60c9-4084-8eb7-27705fd5cf9a", /* Anthropic's Claude Code staging — will
+                                                        * not work for Claurst */
     oauth_file_suffix: "-staging-oauth",
     mcp_proxy_url: "https://mcp-proxy-staging.anthropic.com",
     mcp_proxy_path: "/v1/mcp/{server_id}",
 };
 
 /// Client-ID Metadata Document URL for MCP OAuth (CIMD / SEP-991).
-pub const MCP_CLIENT_METADATA_URL: &str =
-    "https://claude.ai/oauth/claude-code-client-metadata";
+pub const MCP_CLIENT_METADATA_URL: &str = "https://claude.ai/oauth/claude-code-client-metadata";
 
 // ---------------------------------------------------------------------------
 // Config selection
@@ -142,7 +143,7 @@ pub fn get_oauth_config() -> &'static OAuthConfig {
 
 /// PKCE code-challenge / code-verifier helpers.
 pub mod pkce {
-    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
     use sha2::{Digest, Sha256};
 
     /// Generate a cryptographically random code verifier (43–128 chars of
@@ -222,8 +223,7 @@ pub struct OAuthProfile {
 /// Returns a default (all-`None`) profile on any non-success response so
 /// callers can treat a profile fetch failure as non-fatal.
 pub async fn fetch_oauth_profile(
-    access_token: &str,
-    api_base: &str,
+    access_token: &str, api_base: &str,
 ) -> anyhow::Result<OAuthProfile> {
     let client = reqwest::Client::new();
     let url = format!("{}/api/auth/oauth/profile", api_base.trim_end_matches('/'));
@@ -250,11 +250,7 @@ pub async fn fetch_oauth_profile(
 
 /// Build the OAuth authorization URL (mirrors `buildAuthUrl` in client.ts).
 pub fn build_auth_url(
-    code_challenge: &str,
-    state: &str,
-    port: u16,
-    is_manual: bool,
-    login_with_claude_ai: bool,
+    code_challenge: &str, state: &str, port: u16, is_manual: bool, login_with_claude_ai: bool,
     inference_only: bool,
 ) -> String {
     let cfg = get_oauth_config();
@@ -314,7 +310,8 @@ fn codex_tokens_path() -> Option<std::path::PathBuf> {
 
 /// Save Codex OAuth tokens to ~/.claurst/codex_tokens.json
 pub fn save_codex_tokens(tokens: &CodexTokens) -> anyhow::Result<()> {
-    let path = codex_tokens_path().ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
+    let path =
+        codex_tokens_path().ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
     std::fs::create_dir_all(path.parent().unwrap())?;
     let json = serde_json::to_string(tokens)?;
     std::fs::write(&path, json)?;
@@ -333,7 +330,8 @@ pub fn get_codex_tokens() -> Option<CodexTokens> {
 
 /// Clear stored Codex tokens
 pub fn clear_codex_tokens() -> anyhow::Result<()> {
-    let path = codex_tokens_path().ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
+    let path =
+        codex_tokens_path().ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
     if path.exists() {
         std::fs::remove_file(&path)?;
     }
@@ -395,7 +393,11 @@ mod tests {
             "verifier too short: {} chars",
             verifier.len()
         );
-        assert!(verifier.len() <= 128, "verifier too long: {} chars", verifier.len());
+        assert!(
+            verifier.len() <= 128,
+            "verifier too long: {} chars",
+            verifier.len()
+        );
     }
 
     #[test]

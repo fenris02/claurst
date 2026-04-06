@@ -1,7 +1,9 @@
 //! Analytics and telemetry (OpenTelemetry-compatible counters)
 
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicU64, Ordering},
+};
 
 /// Session-level metrics counters (mirrors TypeScript bootstrap state).
 ///

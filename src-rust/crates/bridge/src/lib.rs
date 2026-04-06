@@ -16,12 +16,13 @@
 
 #![warn(clippy::all)]
 
+use std::sync::Arc;
+
 use anyhow::Context;
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
@@ -198,8 +199,8 @@ impl BridgeConfig {
         let mut config = Self::default();
 
         // URL override (sets enabled implicitly)
-        if let Ok(url) = std::env::var("CLAURST_BRIDGE_URL")
-            .or_else(|_| std::env::var("CLAUDE_BRIDGE_BASE_URL"))
+        if let Ok(url) =
+            std::env::var("CLAURST_BRIDGE_URL").or_else(|_| std::env::var("CLAUDE_BRIDGE_BASE_URL"))
         {
             if !url.is_empty() {
                 config.server_url = url;
@@ -361,9 +362,7 @@ pub enum BridgeEvent {
         code: Option<String>,
     },
     /// Response to a `Ping` message.
-    Pong {
-        server_time: Option<u64>,
-    },
+    Pong { server_time: Option<u64> },
     /// Session lifecycle state change.
     SessionState {
         session_id: String,
@@ -407,10 +406,7 @@ impl BridgeSession {
         let session_id = uuid::Uuid::new_v4().to_string();
         let http = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
-            .user_agent(format!(
-                "claude-code-rust/{}",
-                env!("CARGO_PKG_VERSION")
-            ))
+            .user_agent(format!("claude-code-rust/{}", env!("CARGO_PKG_VERSION")))
             .build()
             .expect("Failed to build reqwest client");
 
@@ -451,10 +447,7 @@ impl BridgeSession {
             .as_deref()
             .ok_or_else(|| anyhow::anyhow!("Bridge register: no session token"))?;
 
-        let url = format!(
-            "{}/api/claude_code/sessions",
-            self.config.server_url
-        );
+        let url = format!("{}/api/claude_code/sessions", self.config.server_url);
 
         let body = serde_json::json!({
             "session_id": self.session_id,
@@ -508,13 +501,7 @@ impl BridgeSession {
 
         debug!(session_id = %self.session_id, "Deregistering bridge session");
 
-        match self
-            .http
-            .delete(&url)
-            .bearer_auth(token)
-            .send()
-            .await
-        {
+        match self.http.delete(&url).bearer_auth(token).send().await {
             Ok(r) if r.status().is_success() => {
                 info!(session_id = %self.session_id, "Bridge session deregistered");
             }
@@ -656,16 +643,13 @@ impl BridgeSession {
     ///    `config.max_reconnect_attempts`.
     /// 4. Sleep `polling_interval_ms` between successful cycles.
     pub async fn run_poll_loop(
-        mut self,
-        msg_tx: mpsc::Sender<BridgeMessage>,
-        mut event_rx: mpsc::Receiver<BridgeEvent>,
+        mut self, msg_tx: mpsc::Sender<BridgeMessage>, mut event_rx: mpsc::Receiver<BridgeEvent>,
         cancel: CancellationToken,
     ) {
         info!(session_id = %self.session_id, "Bridge poll loop started");
 
-        let base_interval = std::time::Duration::from_millis(
-            self.config.polling_interval_ms.max(500),
-        );
+        let base_interval =
+            std::time::Duration::from_millis(self.config.polling_interval_ms.max(500));
         let max_backoff = std::time::Duration::from_secs(60);
 
         loop {
@@ -789,8 +773,7 @@ impl BridgeManager {
     ///
     /// The background task runs until `cancel` is triggered.
     pub async fn start(
-        &self,
-        cancel: CancellationToken,
+        &self, cancel: CancellationToken,
     ) -> anyhow::Result<(
         mpsc::Receiver<BridgeMessage>,
         mpsc::Sender<BridgeEvent>,
@@ -815,8 +798,7 @@ impl BridgeManager {
 /// The background task runs until `cancel` is triggered or too many
 /// consecutive errors occur. On shutdown the session is deregistered.
 pub async fn start_bridge(
-    config: BridgeConfig,
-    cancel: CancellationToken,
+    config: BridgeConfig, cancel: CancellationToken,
 ) -> anyhow::Result<(
     mpsc::Receiver<BridgeMessage>,
     mpsc::Sender<BridgeEvent>,
@@ -832,16 +814,15 @@ pub async fn start_bridge(
 }
 
 async fn start_bridge_with_client(
-    config: BridgeConfig,
-    _http: reqwest::Client,
-    cancel: CancellationToken,
+    config: BridgeConfig, _http: reqwest::Client, cancel: CancellationToken,
 ) -> anyhow::Result<(
     mpsc::Receiver<BridgeMessage>,
     mpsc::Sender<BridgeEvent>,
     String,
 )> {
     if !config.is_active() {
-        anyhow::bail!("start_bridge: bridge is not active (enabled={}, token={})",
+        anyhow::bail!(
+            "start_bridge: bridge is not active (enabled={}, token={})",
             config.enabled,
             config.session_token.is_some()
         );
@@ -886,7 +867,11 @@ pub struct BridgeSessionInfo {
 
 impl std::fmt::Display for BridgeSessionInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "BridgeSessionInfo {{ session_id: {}, session_url: {} }}", self.session_id, self.session_url)
+        write!(
+            f,
+            "BridgeSessionInfo {{ session_id: {}, session_url: {} }}",
+            self.session_id, self.session_url
+        )
     }
 }
 
@@ -1019,7 +1004,11 @@ pub async fn start_bridge_session(
             anyhow::bail!(
                 "Bridge session registration failed: server returned HTTP {}. {}",
                 status,
-                if body_text.is_empty() { String::new() } else { format!("Response: {}", &body_text[..body_text.len().min(200)]) }
+                if body_text.is_empty() {
+                    String::new()
+                } else {
+                    format!("Response: {}", &body_text[..body_text.len().min(200)])
+                }
             );
         }
     }
@@ -1044,8 +1033,7 @@ pub async fn start_bridge_session(
 /// Returns an empty `Vec` when there are no new messages (HTTP 204 or empty
 /// body).
 pub async fn poll_bridge_messages(
-    info: &BridgeSessionInfo,
-    since_id: Option<&str>,
+    info: &BridgeSessionInfo, since_id: Option<&str>,
 ) -> anyhow::Result<Vec<SimpleMessage>> {
     let server_url = std::env::var("CLAURST_BRIDGE_URL")
         .or_else(|_| std::env::var("CLAUDE_BRIDGE_BASE_URL"))
@@ -1086,7 +1074,10 @@ pub async fn poll_bridge_messages(
         let status = resp.status().as_u16();
         match status {
             200 => {
-                let text = resp.text().await.context("poll_bridge_messages: reading body")?;
+                let text = resp
+                    .text()
+                    .await
+                    .context("poll_bridge_messages: reading body")?;
                 if text.trim().is_empty() || text.trim() == "[]" {
                     return Ok(vec![]);
                 }
@@ -1098,10 +1089,16 @@ pub async fn poll_bridge_messages(
             429 => {
                 attempt += 1;
                 if attempt > max_retries {
-                    anyhow::bail!("poll_bridge_messages: rate-limited (HTTP 429) after {} retries", max_retries);
+                    anyhow::bail!(
+                        "poll_bridge_messages: rate-limited (HTTP 429) after {} retries",
+                        max_retries
+                    );
                 }
                 let backoff = std::time::Duration::from_millis(1_000 * 2u64.pow(attempt - 1));
-                warn!(attempt, "Bridge poll rate-limited; backing off {:?}", backoff);
+                warn!(
+                    attempt,
+                    "Bridge poll rate-limited; backing off {:?}", backoff
+                );
                 tokio::time::sleep(backoff).await;
                 continue;
             }
@@ -1120,10 +1117,7 @@ pub async fn poll_bridge_messages(
 /// PUTs `/api/bridge/sessions/<session_id>/messages/<msg_id>/response` with
 /// a JSON body `{"content": "<response>", "done": true}`.
 pub async fn post_bridge_response(
-    info: &BridgeSessionInfo,
-    msg_id: &str,
-    content: &str,
-    done: bool,
+    info: &BridgeSessionInfo, msg_id: &str, content: &str, done: bool,
 ) -> anyhow::Result<()> {
     let server_url = std::env::var("CLAURST_BRIDGE_URL")
         .or_else(|_| std::env::var("CLAUDE_BRIDGE_BASE_URL"))
@@ -1186,10 +1180,7 @@ pub async fn post_bridge_response(
 ///
 /// Errors are returned to the caller, who should treat them as transient and
 /// ignore them so the query loop is never blocked.
-pub async fn post_bridge_event(
-    info: &BridgeSessionInfo,
-    payload: String,
-) -> anyhow::Result<()> {
+pub async fn post_bridge_event(info: &BridgeSessionInfo, payload: String) -> anyhow::Result<()> {
     let server_url = std::env::var("CLAURST_BRIDGE_URL")
         .or_else(|_| std::env::var("CLAUDE_BRIDGE_BASE_URL"))
         .unwrap_or_else(|_| "https://claude.ai".to_string());
@@ -1232,10 +1223,7 @@ pub async fn post_bridge_event(
         debug!(session_id = %info.session_id, "Bridge event posted");
         Ok(())
     } else {
-        anyhow::bail!(
-            "post_bridge_event: server returned HTTP {}",
-            status
-        )
+        anyhow::bail!("post_bridge_event: server returned HTTP {}", status)
     }
 }
 
@@ -1333,18 +1321,15 @@ pub enum BridgeOutbound {
 /// forwarding [`BridgeOutbound`] events to the server.
 ///
 /// # Parameters
-/// - `config` — bridge configuration (must be active: `enabled == true` and
-///   `session_token` is `Some`).
-/// - `tui_tx` — channel used to send state-change events to the TUI / main
-///   loop.
-/// - `outbound_rx` — channel for receiving outbound events from the query
-///   loop to upload to the bridge server.
+/// - `config` — bridge configuration (must be active: `enabled == true` and `session_token` is
+///   `Some`).
+/// - `tui_tx` — channel used to send state-change events to the TUI / main loop.
+/// - `outbound_rx` — channel for receiving outbound events from the query loop to upload to the
+///   bridge server.
 /// - `cancel` — token that triggers a clean shutdown of the loop.
 pub async fn run_bridge_loop(
-    config: BridgeConfig,
-    tui_tx: mpsc::Sender<TuiBridgeEvent>,
-    mut outbound_rx: mpsc::Receiver<BridgeOutbound>,
-    cancel: tokio_util::sync::CancellationToken,
+    config: BridgeConfig, tui_tx: mpsc::Sender<TuiBridgeEvent>,
+    mut outbound_rx: mpsc::Receiver<BridgeOutbound>, cancel: tokio_util::sync::CancellationToken,
 ) -> anyhow::Result<()> {
     if !config.is_active() {
         anyhow::bail!(
@@ -1377,10 +1362,7 @@ pub async fn run_bridge_loop(
                 let msg = e.to_string();
                 if msg.contains("auth error") || msg.contains("401") || msg.contains("403") {
                     let _ = tui_tx
-                        .send(TuiBridgeEvent::Error(format!(
-                            "Bridge auth failed: {}",
-                            e
-                        )))
+                        .send(TuiBridgeEvent::Error(format!("Bridge auth failed: {}", e)))
                         .await;
                     return Err(e);
                 }
@@ -1436,7 +1418,9 @@ pub async fn run_bridge_loop(
     // Spawn the low-level poll loop in its own task.
     let poll_cancel = cancel.clone();
     tokio::spawn(async move {
-        session.run_poll_loop(msg_tx, bridge_ev_rx, poll_cancel).await;
+        session
+            .run_poll_loop(msg_tx, bridge_ev_rx, poll_cancel)
+            .await;
     });
 
     // Message ID counter for outbound text deltas.
@@ -1596,7 +1580,7 @@ pub mod trusted_device {
 // ---------------------------------------------------------------------------
 
 pub mod jwt {
-    pub use super::{decode_jwt_expiry, jwt_is_expired, JwtClaims};
+    pub use super::{JwtClaims, decode_jwt_expiry, jwt_is_expired};
 }
 
 // ---------------------------------------------------------------------------
@@ -1706,7 +1690,9 @@ mod tests {
 
     #[test]
     fn test_bridge_event_pong_serde() {
-        let ev = BridgeEvent::Pong { server_time: Some(1_700_000_000) };
+        let ev = BridgeEvent::Pong {
+            server_time: Some(1_700_000_000),
+        };
         let j = serde_json::to_string(&ev).unwrap();
         assert!(j.contains(r#""type":"pong""#));
     }

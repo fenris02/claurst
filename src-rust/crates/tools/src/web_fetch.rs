@@ -1,13 +1,14 @@
 // WebFetch tool: HTTP GET with HTML-to-text conversion and LLM-powered semantic extraction
 // for edge cases (JS-heavy pages, minimal content).
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
+use std::{fs, path::PathBuf};
+
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
-use std::fs;
-use std::path::PathBuf;
+use serde_json::{Value, json};
 use tracing::{debug, warn};
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 pub struct WebFetchTool;
 
@@ -21,8 +22,10 @@ struct WebFetchInput {
 
 /// Compute a simple hash of the URL for cache purposes.
 fn url_hash(url: &str) -> String {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+    use std::{
+        collections::hash_map::DefaultHasher,
+        hash::{Hash, Hasher},
+    };
     let mut hasher = DefaultHasher::new();
     url.hash(&mut hasher);
     format!("{:x}", hasher.finish())
@@ -82,9 +85,8 @@ fn is_edge_case_html(html: &str, extracted_text: &str) -> bool {
 
     // Check for semantic HTML tags
     let lower = html.to_lowercase();
-    let has_semantic = lower.contains("<article") ||
-                      lower.contains("<main") ||
-                      lower.contains("<body");
+    let has_semantic =
+        lower.contains("<article") || lower.contains("<main") || lower.contains("<body");
 
     if !has_semantic {
         debug!("Edge case: no semantic HTML tags");
@@ -142,7 +144,10 @@ async fn semantic_extraction(html: &str, ctx: &ToolContext) -> Option<String> {
             });
 
             if let Some(extracted) = text {
-                debug!(extracted_len = extracted.len(), "Semantic extraction successful");
+                debug!(
+                    extracted_len = extracted.len(),
+                    "Semantic extraction successful"
+                );
                 return Some(extracted);
             }
 
@@ -185,9 +190,9 @@ fn strip_html(html: &str) -> String {
             }
             // Block tags => newline
             let block_tags = [
-                "<br", "<p ", "<p>", "</p>", "<div", "</div>", "<h1", "<h2", "<h3",
-                "<h4", "<h5", "<h6", "</h1", "</h2", "</h3", "</h4", "</h5", "</h6",
-                "<li", "</li", "<tr", "</tr", "<hr",
+                "<br", "<p ", "<p>", "</p>", "<div", "</div>", "<h1", "<h2", "<h3", "<h4", "<h5",
+                "<h6", "</h1", "</h2", "</h3", "</h4", "</h5", "</h6", "<li", "</li", "<tr",
+                "</tr", "<hr",
             ];
             for tag in &block_tags {
                 if rest.starts_with(tag) {
@@ -324,7 +329,8 @@ impl Tool for WebFetchTool {
             Err(e) => return ToolResult::error(format!("Failed to create HTTP client: {}", e)),
         };
 
-        let resp = match client.get(&params.url)
+        let resp = match client
+            .get(&params.url)
             .header("User-Agent", "Claude-Code/1.0")
             .send()
             .await
@@ -335,10 +341,7 @@ impl Tool for WebFetchTool {
 
         let status = resp.status();
         if !status.is_success() {
-            return ToolResult::error(format!(
-                "HTTP {} when fetching {}",
-                status, params.url
-            ));
+            return ToolResult::error(format!("HTTP {} when fetching {}", status, params.url));
         }
 
         let content_type = resp

@@ -17,8 +17,9 @@
 // Sixel escape sequence:
 //   ESC P q ... ESC \
 
-use claurst_core::ImageSource;
 use std::io::Write;
+
+use claurst_core::ImageSource;
 
 /// Maximum bytes per Kitty APC chunk.
 const KITTY_CHUNK_SIZE: usize = 4096;
@@ -86,11 +87,10 @@ pub fn supports_kitty_graphics() -> bool {
 
 /// Attempt to render `source` as an inline image.
 ///
-/// * If an image protocol is available and the source carries base64 data,
-///   the appropriate escape sequence is written to `stdout` and `None` is
-///   returned (caller should skip adding a text line).
-/// * Otherwise a human-readable fallback string is returned for display
-///   as a normal text span.
+/// * If an image protocol is available and the source carries base64 data, the appropriate escape
+///   sequence is written to `stdout` and `None` is returned (caller should skip adding a text
+///   line).
+/// * Otherwise a human-readable fallback string is returned for display as a normal text span.
 ///
 /// The caller must flush stdout after this call when `None` is returned.
 pub fn render_image(source: &ImageSource) -> Option<String> {
@@ -269,13 +269,14 @@ fn decode_image_data(data: &[u8]) -> Result<ImageData, Box<dyn std::error::Error
 /// Uses the `image` crate to decode PNG data and convert to RGBA8 format.
 /// Returns an error if decoding fails.
 fn decode_png(data: &[u8]) -> Result<ImageData, Box<dyn std::error::Error>> {
-    use image::ImageReader;
     use std::io::Cursor;
 
+    use image::ImageReader;
+
     // Decode the PNG using the image crate with explicit format hint
-    let reader = ImageReader::new(Cursor::new(data))
-        .with_guessed_format()?;
-    let image = reader.decode()
+    let reader = ImageReader::new(Cursor::new(data)).with_guessed_format()?;
+    let image = reader
+        .decode()
         .map_err(|e| format!("Failed to decode PNG: {}", e))?;
 
     // Convert to RGBA8 format
@@ -295,13 +296,14 @@ fn decode_png(data: &[u8]) -> Result<ImageData, Box<dyn std::error::Error>> {
 /// Uses the `image` crate to decode JPEG data and convert to RGBA8 format.
 /// Returns an error if decoding fails.
 fn decode_jpeg(data: &[u8]) -> Result<ImageData, Box<dyn std::error::Error>> {
-    use image::ImageReader;
     use std::io::Cursor;
 
+    use image::ImageReader;
+
     // Decode the JPEG using the image crate with explicit format hint
-    let reader = ImageReader::new(Cursor::new(data))
-        .with_guessed_format()?;
-    let image = reader.decode()
+    let reader = ImageReader::new(Cursor::new(data)).with_guessed_format()?;
+    let image = reader
+        .decode()
         .map_err(|e| format!("Failed to decode JPEG: {}", e))?;
 
     // Convert to RGBA8 format
@@ -369,7 +371,9 @@ mod tests {
     #[test]
     fn test_decode_minimal_png() {
         // Minimal 1x1 transparent PNG created with:
-        // echo -ne '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82' > test.png
+        // echo -ne '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\
+        // x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\
+        // x00\x00\x00\x00IEND\xaeB`\x82' > test.png
         let png_data = vec![
             0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
             0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00,
@@ -399,7 +403,10 @@ mod tests {
         ];
 
         let result = decode_image_data(&png_data);
-        assert!(result.is_ok(), "decode_image_data should detect and decode PNG");
+        assert!(
+            result.is_ok(),
+            "decode_image_data should detect and decode PNG"
+        );
 
         let img = result.unwrap();
         assert_eq!(img.width, 1);
@@ -411,7 +418,10 @@ mod tests {
     fn test_decode_invalid_image() {
         let invalid_data = vec![0x00, 0x00, 0x00, 0x00];
         let result = decode_image_data(&invalid_data);
-        assert!(result.is_err(), "Invalid image data should produce an error");
+        assert!(
+            result.is_err(),
+            "Invalid image data should produce an error"
+        );
     }
 
     /// Test that decode_image_data rejects empty data.

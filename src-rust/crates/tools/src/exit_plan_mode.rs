@@ -1,10 +1,11 @@
 // ExitPlanMode tool: leave planning mode and return to normal execution.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::debug;
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 pub struct ExitPlanModeTool;
 
@@ -43,9 +44,8 @@ impl Tool for ExitPlanModeTool {
     }
 
     async fn execute(&self, input: Value, _ctx: &ToolContext) -> ToolResult {
-        let params: ExitPlanModeInput = serde_json::from_value(input).unwrap_or(ExitPlanModeInput {
-            summary: None,
-        });
+        let params: ExitPlanModeInput =
+            serde_json::from_value(input).unwrap_or(ExitPlanModeInput { summary: None });
 
         debug!(summary = ?params.summary, "Exiting plan mode");
 

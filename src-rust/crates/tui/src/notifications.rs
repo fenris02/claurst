@@ -1,7 +1,6 @@
 // notifications.rs — Notification / banner system for the TUI.
 
-use std::collections::VecDeque;
-use std::time::Instant;
+use std::{collections::VecDeque, time::Instant};
 
 use crate::overlays::{
     CLAURST_ACCENT, CLAURST_MUTED, CLAURST_PANEL_BG, CLAURST_PANEL_BORDER, CLAURST_TEXT,
@@ -48,7 +47,8 @@ impl NotificationQueue {
     ///
     /// * `duration_secs` — `None` for persistent, `Some(n)` for auto-expire after *n* seconds.
     pub fn push(&mut self, kind: NotificationKind, msg: String, duration_secs: Option<u64>) {
-        let expires_at = duration_secs.map(|secs| Instant::now() + std::time::Duration::from_secs(secs));
+        let expires_at =
+            duration_secs.map(|secs| Instant::now() + std::time::Duration::from_secs(secs));
         self.notifications
             .retain(|n| !(n.kind == kind && n.message == msg));
         let id = format!("notif-{}", self.next_id);
@@ -70,9 +70,8 @@ impl NotificationQueue {
     /// Remove all expired notifications.  Call this once per render frame.
     pub fn tick(&mut self) {
         let now = Instant::now();
-        self.notifications.retain(|n| {
-            n.expires_at.map_or(true, |exp| exp > now)
-        });
+        self.notifications
+            .retain(|n| n.expires_at.map_or(true, |exp| exp > now));
     }
 
     /// Return the currently visible (most recent) notification, if any.
@@ -99,11 +98,13 @@ impl NotificationQueue {
 // Rendering helpers
 // ---------------------------------------------------------------------------
 
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Clear, Paragraph};
-use ratatui::Frame;
+use ratatui::{
+    Frame,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Clear, Paragraph},
+};
 
 impl NotificationKind {
     pub fn color(&self) -> Color {
@@ -150,26 +151,43 @@ pub fn render_notification_banner(frame: &mut Frame, queue: &NotificationQueue, 
     let icon = notif.kind.icon();
 
     let mut spans = vec![
-        Span::styled(format!(" {} ", icon), Style::default().fg(color).add_modifier(Modifier::BOLD)),
-        Span::styled(notif.message.clone(), Style::default().fg(CLAURST_TEXT).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            format!(" {} ", icon),
+            Style::default().fg(color).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            notif.message.clone(),
+            Style::default()
+                .fg(CLAURST_TEXT)
+                .add_modifier(Modifier::BOLD),
+        ),
     ];
     if notif.dismissible {
-        spans.push(Span::styled("  Esc dismiss", Style::default().fg(CLAURST_MUTED)));
+        spans.push(Span::styled(
+            "  Esc dismiss",
+            Style::default().fg(CLAURST_MUTED),
+        ));
     }
 
     let content_width = spans.iter().map(|span| span.content.len()).sum::<usize>();
     if content_width > banner_width.saturating_sub(2) as usize {
         spans = vec![
-            Span::styled(format!(" {} ", icon), Style::default().fg(color).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!(" {} ", icon),
+                Style::default().fg(color).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(
                 format!(
                     "{}…",
-                    notif.message
+                    notif
+                        .message
                         .chars()
                         .take(banner_width.saturating_sub(6) as usize)
                         .collect::<String>()
                 ),
-                Style::default().fg(CLAURST_TEXT).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(CLAURST_TEXT)
+                    .add_modifier(Modifier::BOLD),
             ),
         ];
     }
@@ -190,10 +208,10 @@ pub fn render_notification_banner(frame: &mut Frame, queue: &NotificationQueue, 
             cell.set_fg(CLAURST_PANEL_BORDER);
             cell.set_char('▌');
         }
-        if let Some(cell) = frame
-            .buffer_mut()
-            .cell_mut((banner_area.x.saturating_add(banner_area.width - 1), banner_area.y))
-        {
+        if let Some(cell) = frame.buffer_mut().cell_mut((
+            banner_area.x.saturating_add(banner_area.width - 1),
+            banner_area.y,
+        )) {
             cell.set_bg(CLAURST_PANEL_BG);
             cell.set_fg(CLAURST_PANEL_BORDER);
             cell.set_char('▐');

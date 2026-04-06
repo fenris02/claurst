@@ -5,11 +5,12 @@
 // fails after some files have already been written, the tool attempts to
 // restore those files from in-memory backups.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::debug;
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 pub struct BatchEditTool;
 
@@ -90,15 +91,10 @@ impl Tool for BatchEditTool {
         }
 
         // Permission check (one check covers the whole batch).
-        let description = params
-            .description
-            .as_deref()
-            .unwrap_or("batch file edits");
-        if let Err(e) = ctx.check_permission(
-            self.name(),
-            &format!("BatchEdit: {}", description),
-            false,
-        ) {
+        let description = params.description.as_deref().unwrap_or("batch file edits");
+        if let Err(e) =
+            ctx.check_permission(self.name(), &format!("BatchEdit: {}", description), false)
+        {
             return ToolResult::error(e.to_string());
         }
 

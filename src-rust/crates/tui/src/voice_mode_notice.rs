@@ -3,11 +3,13 @@
 // Shown when the user's account has voice mode available but it isn't yet
 // enabled. Appears as a one-time dismissable notice below the welcome header.
 
-use ratatui::buffer::Buffer;
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Clear, Paragraph, Widget};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Clear, Paragraph, Widget},
+};
 
 // ---------------------------------------------------------------------------
 // State
@@ -98,16 +100,12 @@ pub fn render_voice_mode_notice(state: &VoiceModeNoticeState, area: Rect, buf: &
             ),
             Span::styled(
                 "/voice",
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
             ),
-            Span::styled(
-                " to configure.  ",
-                Style::default().fg(Color::White),
-            ),
-            Span::styled(
-                "[Esc to dismiss]",
-                Style::default().fg(Color::DarkGray),
-            ),
+            Span::styled(" to configure.  ", Style::default().fg(Color::White)),
+            Span::styled("[Esc to dismiss]", Style::default().fg(Color::DarkGray)),
         ]),
         Line::from(""),
     ];
@@ -123,8 +121,9 @@ pub fn render_voice_mode_notice(state: &VoiceModeNoticeState, area: Rect, buf: &
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ratatui::layout::Rect;
+
+    use super::*;
 
     #[test]
     fn voice_notice_show_when_available_not_enabled() {
@@ -174,10 +173,20 @@ mod tests {
     fn voice_notice_render_smoke() {
         let mut state = VoiceModeNoticeState::new();
         state.show_if_available(true, false);
-        let area = Rect { x: 0, y: 0, width: 100, height: 4 };
+        let area = Rect {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 4,
+        };
         let mut buf = ratatui::buffer::Buffer::empty(area);
         render_voice_mode_notice(&state, area, &mut buf);
-        let rendered = buf.content.iter().map(|c| c.symbol()).collect::<Vec<_>>().join("");
+        let rendered = buf
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<Vec<_>>()
+            .join("");
         assert!(rendered.contains("Voice mode"));
         assert!(rendered.contains("Alt+V"));
     }
@@ -185,10 +194,20 @@ mod tests {
     #[test]
     fn voice_notice_not_rendered_when_invisible() {
         let state = VoiceModeNoticeState::new();
-        let area = Rect { x: 0, y: 0, width: 80, height: 4 };
+        let area = Rect {
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 4,
+        };
         let mut buf = ratatui::buffer::Buffer::empty(area);
         render_voice_mode_notice(&state, area, &mut buf);
-        let rendered = buf.content.iter().map(|c| c.symbol()).collect::<Vec<_>>().join("");
+        let rendered = buf
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<Vec<_>>()
+            .join("");
         assert!(!rendered.contains("Voice"));
     }
 }

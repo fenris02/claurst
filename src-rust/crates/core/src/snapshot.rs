@@ -148,9 +148,11 @@ impl Default for SnapshotManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
+
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn test_snapshot_existing_file_and_revert() {

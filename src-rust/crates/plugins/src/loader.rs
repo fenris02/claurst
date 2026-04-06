@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 /// Plugin discovery and loading — ported from `pluginLoader.ts` / `pluginDirectories.ts`.
 ///
 /// Scan order (matches TS precedence):
@@ -10,7 +12,6 @@
 /// accepted.
 use crate::manifest::{PluginHooksConfig, PluginManifest};
 use crate::plugin::{LoadedPlugin, PluginError, PluginSource};
-use std::path::{Path, PathBuf};
 
 // ---------------------------------------------------------------------------
 // Public helpers
@@ -35,8 +36,7 @@ pub fn project_plugins_dir(project_dir: &Path) -> PathBuf {
 /// Each directory in `search_dirs` is scanned at depth 1: every immediate
 /// subdirectory (or manifest file) is treated as a candidate plugin.
 pub async fn discover_plugins(
-    search_dirs: &[PathBuf],
-    source: PluginSource,
+    search_dirs: &[PathBuf], source: PluginSource,
 ) -> (Vec<LoadedPlugin>, Vec<PluginError>) {
     let mut plugins: Vec<LoadedPlugin> = Vec::new();
     let mut errors: Vec<PluginError> = Vec::new();
@@ -79,8 +79,7 @@ pub async fn discover_plugins(
 /// Returns `Ok(None)` if the path does not look like a plugin (no manifest
 /// found) without adding an error.
 pub fn try_load_from_path(
-    path: &Path,
-    source: PluginSource,
+    path: &Path, source: PluginSource,
 ) -> Result<Option<LoadedPlugin>, PluginError> {
     let (plugin_dir, manifest_path) = if path.is_dir() {
         // Look for manifest inside the directory.
@@ -185,8 +184,7 @@ fn load_manifest(path: &Path) -> Result<PluginManifest, PluginError> {
 /// 1. `hooks/hooks.json` inside the plugin directory
 /// 2. Inline `hooks` field in the manifest
 pub fn load_hooks_config(
-    plugin_dir: &Path,
-    manifest: &PluginManifest,
+    plugin_dir: &Path, manifest: &PluginManifest,
 ) -> Option<PluginHooksConfig> {
     // 1. File-based hooks.
     let hooks_file = plugin_dir.join("hooks").join("hooks.json");
@@ -251,9 +249,7 @@ pub fn collect_command_defs(plugin: &LoadedPlugin) -> Vec<crate::plugin::PluginC
 
 /// Recursively collect .md files from `dir` into `PluginCommandDef` items.
 fn collect_markdown_commands(
-    dir: &Path,
-    plugin_name: &str,
-    capabilities: Option<Vec<String>>,
+    dir: &Path, plugin_name: &str, capabilities: Option<Vec<String>>,
     defs: &mut Vec<crate::plugin::PluginCommandDef>,
 ) {
     use walkdir::WalkDir;
@@ -314,10 +310,7 @@ fn collect_markdown_commands(
 ///
 /// e.g. `<plugin_dir>/commands/build/deploy.md` → `myplugin:build:deploy`
 fn command_name_from_file(path: &Path, plugin_name: &str) -> String {
-    let stem = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("cmd");
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("cmd");
     format!("{}:{}", plugin_name, stem)
 }
 

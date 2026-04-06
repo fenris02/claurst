@@ -1,10 +1,11 @@
+use std::collections::HashMap;
+
 /// Plugin registry — holds all loaded plugins and provides queries.
 ///
 /// Ported from the TS "enabled plugins" concept in `pluginLoader.ts` and the
 /// app-state plugin arrays.
 use crate::hooks::{HookRegistry, register_plugin_hooks};
 use crate::plugin::{LoadedPlugin, PluginCommandDef, PluginError, ReloadDiff};
-use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // PluginRegistry
@@ -273,10 +274,10 @@ impl PluginRegistry {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::plugin::PluginSource;
-    use crate::manifest::PluginManifest;
     use std::path::PathBuf;
+
+    use super::*;
+    use crate::{manifest::PluginManifest, plugin::PluginSource};
 
     fn make_plugin(name: &str) -> LoadedPlugin {
         LoadedPlugin {

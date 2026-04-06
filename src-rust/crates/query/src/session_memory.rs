@@ -7,12 +7,14 @@
 // services/extractMemories/extractMemories.ts.
 //
 // Strategy:
-//   1. After sessions with 20+ messages (or on compact), call the API with a
-//      structured extraction prompt.
+//   1. After sessions with 20+ messages (or on compact), call the API with a structured extraction
+//      prompt.
 //   2. Parse the response into typed ExtractedMemory entries.
-//   3. Append entries under "## Auto-extracted memories" in AGENTS.md
-//      (creating the file if it doesn't exist).
+//   3. Append entries under "## Auto-extracted memories" in AGENTS.md (creating the file if it
+//      doesn't exist).
 //   4. Track state so we don't re-extract from already-processed messages.
+
+use std::{path::Path, sync::Arc};
 
 use claurst_api::{
     AnthropicStreamEvent, ApiMessage, CreateMessageRequest, StreamAccumulator, StreamHandler,
@@ -20,8 +22,6 @@ use claurst_api::{
 };
 use claurst_core::types::{Message, Role};
 use serde_json::Value;
-use std::path::Path;
-use std::sync::Arc;
 use tokio::fs;
 use tracing::{debug, info, warn};
 
@@ -110,19 +110,18 @@ impl SessionMemoryState {
     pub fn has_new_messages_since_last_extraction(&self, messages: &[Message]) -> bool {
         match &self.last_extracted_message_uuid {
             None => true, // Nothing extracted yet → treat all messages as new
-            Some(uuid) => messages.iter().any(|m| m.uuid.as_deref() == Some(uuid.as_str()))
-                && messages
-                    .last()
-                    .and_then(|m| m.uuid.as_deref())
-                    != Some(uuid.as_str()),
+            Some(uuid) => {
+                messages
+                    .iter()
+                    .any(|m| m.uuid.as_deref() == Some(uuid.as_str()))
+                    && messages.last().and_then(|m| m.uuid.as_deref()) != Some(uuid.as_str())
+            }
         }
     }
 
     /// Advance the cursor to the last message in `messages`.
     pub fn advance_cursor(&mut self, messages: &[Message]) {
-        self.last_extracted_message_uuid = messages
-            .last()
-            .and_then(|m| m.uuid.clone());
+        self.last_extracted_message_uuid = messages.last().and_then(|m| m.uuid.clone());
     }
 }
 
@@ -197,10 +196,8 @@ impl SessionMemoryExtractor {
         }
 
         // Require minimum tool calls between updates (mirrors TS toolCallsBetweenUpdates)
-        let tool_calls_since = Self::count_tool_calls_since(
-            messages,
-            state.last_extracted_message_uuid.as_deref(),
-        );
+        let tool_calls_since =
+            Self::count_tool_calls_since(messages, state.last_extracted_message_uuid.as_deref());
 
         tool_calls_since >= MIN_TOOL_CALLS_BETWEEN_EXTRACTIONS
             || !state.has_new_messages_since_last_extraction(messages)
@@ -211,10 +208,7 @@ impl SessionMemoryExtractor {
     /// Calls the API with a structured extraction prompt and parses the
     /// response into `ExtractedMemory` entries.
     pub async fn extract(
-        &self,
-        messages: &[Message],
-        working_dir: &Path,
-        api_client: &claurst_api::AnthropicClient,
+        &self, messages: &[Message], working_dir: &Path, api_client: &claurst_api::AnthropicClient,
     ) -> anyhow::Result<Vec<ExtractedMemory>> {
         let model_visible: Vec<&Message> = messages
             .iter()
@@ -274,20 +268,14 @@ impl SessionMemoryExtractor {
         }
 
         let memories = parse_extraction_response(&response_text);
-        info!(
-            count = memories.len(),
-            "Session memory extraction complete"
-        );
+        info!(count = memories.len(), "Session memory extraction complete");
 
         Ok(memories)
     }
 
     /// Persist extracted memories to `target_path` (creates directories and
     /// the file if they don't exist).  Appends under `## Auto-extracted memories`.
-    pub async fn persist(
-        memories: &[ExtractedMemory],
-        target_path: &Path,
-    ) -> anyhow::Result<()> {
+    pub async fn persist(memories: &[ExtractedMemory], target_path: &Path) -> anyhow::Result<()> {
         if memories.is_empty() {
             return Ok(());
         }
@@ -415,7 +403,11 @@ fn parse_extraction_response(response: &str) -> Vec<ExtractedMemory> {
             continue;
         }
 
-        memories.push(ExtractedMemory { content, category, confidence });
+        memories.push(ExtractedMemory {
+            content,
+            category,
+            confidence,
+        });
     }
 
     memories
@@ -427,8 +419,9 @@ fn parse_extraction_response(response: &str) -> Vec<ExtractedMemory> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use claurst_core::types::Message;
+
+    use super::*;
 
     fn make_user(text: &str) -> Message {
         Message::user(text)
@@ -540,16 +533,34 @@ MEMORY: code_pattern | 7 | Uses builder pattern";
 
     #[test]
     fn test_category_from_str_variants() {
-        assert_eq!(MemoryCategory::from_str("user_preference"), MemoryCategory::UserPreference);
-        assert_eq!(MemoryCategory::from_str("project_fact"), MemoryCategory::ProjectFact);
-        assert_eq!(MemoryCategory::from_str("code_pattern"), MemoryCategory::CodePattern);
-        assert_eq!(MemoryCategory::from_str("decision"), MemoryCategory::Decision);
-        assert_eq!(MemoryCategory::from_str("constraint"), MemoryCategory::Constraint);
+        assert_eq!(
+            MemoryCategory::from_str("user_preference"),
+            MemoryCategory::UserPreference
+        );
+        assert_eq!(
+            MemoryCategory::from_str("project_fact"),
+            MemoryCategory::ProjectFact
+        );
+        assert_eq!(
+            MemoryCategory::from_str("code_pattern"),
+            MemoryCategory::CodePattern
+        );
+        assert_eq!(
+            MemoryCategory::from_str("decision"),
+            MemoryCategory::Decision
+        );
+        assert_eq!(
+            MemoryCategory::from_str("constraint"),
+            MemoryCategory::Constraint
+        );
     }
 
     #[test]
     fn test_category_unknown_defaults_to_project_fact() {
-        assert_eq!(MemoryCategory::from_str("totally_unknown"), MemoryCategory::ProjectFact);
+        assert_eq!(
+            MemoryCategory::from_str("totally_unknown"),
+            MemoryCategory::ProjectFact
+        );
     }
 
     // ---- persist (integration-ish with tempfile) -----------------------
@@ -559,15 +570,15 @@ MEMORY: code_pattern | 7 | Uses builder pattern";
         let dir = tempfile::tempdir().unwrap();
         let target = dir.path().join(".claurst").join("AGENTS.md");
 
-        let memories = vec![
-            ExtractedMemory {
-                content: "Uses async Rust".to_string(),
-                category: MemoryCategory::ProjectFact,
-                confidence: 0.9,
-            },
-        ];
+        let memories = vec![ExtractedMemory {
+            content: "Uses async Rust".to_string(),
+            category: MemoryCategory::ProjectFact,
+            confidence: 0.9,
+        }];
 
-        SessionMemoryExtractor::persist(&memories, &target).await.unwrap();
+        SessionMemoryExtractor::persist(&memories, &target)
+            .await
+            .unwrap();
 
         let content = fs::read_to_string(&target).await.unwrap();
         assert!(content.contains("Auto-extracted memories"));
@@ -581,17 +592,19 @@ MEMORY: code_pattern | 7 | Uses builder pattern";
         let target = dir.path().join("AGENTS.md");
 
         // Write initial content
-        fs::write(&target, "# My Project\n\nExisting content.\n").await.unwrap();
+        fs::write(&target, "# My Project\n\nExisting content.\n")
+            .await
+            .unwrap();
 
-        let memories = vec![
-            ExtractedMemory {
-                content: "Prefers explicit error handling".to_string(),
-                category: MemoryCategory::UserPreference,
-                confidence: 0.8,
-            },
-        ];
+        let memories = vec![ExtractedMemory {
+            content: "Prefers explicit error handling".to_string(),
+            category: MemoryCategory::UserPreference,
+            confidence: 0.8,
+        }];
 
-        SessionMemoryExtractor::persist(&memories, &target).await.unwrap();
+        SessionMemoryExtractor::persist(&memories, &target)
+            .await
+            .unwrap();
 
         let content = fs::read_to_string(&target).await.unwrap();
         assert!(content.contains("Existing content."));
@@ -608,15 +621,15 @@ MEMORY: code_pattern | 7 | Uses builder pattern";
         let initial = "# Notes\n\n## Auto-extracted memories\n\n### Old memories\n- old fact\n";
         fs::write(&target, initial).await.unwrap();
 
-        let memories = vec![
-            ExtractedMemory {
-                content: "New fact discovered".to_string(),
-                category: MemoryCategory::ProjectFact,
-                confidence: 0.7,
-            },
-        ];
+        let memories = vec![ExtractedMemory {
+            content: "New fact discovered".to_string(),
+            category: MemoryCategory::ProjectFact,
+            confidence: 0.7,
+        }];
 
-        SessionMemoryExtractor::persist(&memories, &target).await.unwrap();
+        SessionMemoryExtractor::persist(&memories, &target)
+            .await
+            .unwrap();
 
         let content = fs::read_to_string(&target).await.unwrap();
         // Should have both old and new facts

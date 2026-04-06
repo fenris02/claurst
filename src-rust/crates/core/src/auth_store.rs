@@ -3,9 +3,9 @@
 // Stores API keys and OAuth tokens for providers so users don't have to rely
 // solely on environment variables.
 
+use std::{collections::HashMap, path::PathBuf};
+
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::PathBuf;
 
 /// A stored credential for a provider.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,9 +89,7 @@ impl AuthStore {
                     }
                 }
                 StoredCredential::OAuthToken {
-                    access,
-                    refresh,
-                    ..
+                    access, refresh, ..
                 } if provider_id == "github-copilot" => {
                     if !refresh.is_empty() {
                         return Some(refresh.clone());

@@ -5,26 +5,28 @@
 // mapping ProviderRequest → CreateMessageRequest and mapping
 // AnthropicStreamEvent → provider_types::StreamEvent.
 
-use std::pin::Pin;
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc};
 
 use async_stream::stream;
 use async_trait::async_trait;
-use claurst_core::provider_id::{ModelId, ProviderId};
-use claurst_core::types::{ContentBlock, UsageInfo};
+use claurst_core::{
+    provider_id::{ModelId, ProviderId},
+    types::{ContentBlock, UsageInfo},
+};
 use futures::Stream;
 
-use crate::client::{AnthropicClient, ClientConfig};
-use crate::provider::{LlmProvider, ModelInfo};
-use crate::provider_error::ProviderError;
-use crate::provider_types::{
-    ProviderCapabilities, ProviderRequest, ProviderResponse, ProviderStatus, StopReason,
-    StreamEvent, SystemPromptStyle,
-};
-use crate::streaming::{AnthropicStreamEvent, ContentDelta, NullStreamHandler};
-use crate::types::{ApiMessage, ApiToolDefinition, CreateMessageRequest};
-
 use super::message_normalization::normalize_anthropic_messages;
+use crate::{
+    client::{AnthropicClient, ClientConfig},
+    provider::{LlmProvider, ModelInfo},
+    provider_error::ProviderError,
+    provider_types::{
+        ProviderCapabilities, ProviderRequest, ProviderResponse, ProviderStatus, StopReason,
+        StreamEvent, SystemPromptStyle,
+    },
+    streaming::{AnthropicStreamEvent, ContentDelta, NullStreamHandler},
+    types::{ApiMessage, ApiToolDefinition, CreateMessageRequest},
+};
 
 // ---------------------------------------------------------------------------
 // AnthropicProvider
@@ -59,10 +61,8 @@ impl AnthropicProvider {
     /// Build a [`CreateMessageRequest`] from a [`ProviderRequest`].
     fn build_request(request: &ProviderRequest) -> CreateMessageRequest {
         let normalized_messages = normalize_anthropic_messages(&request.messages);
-        let api_messages: Vec<ApiMessage> = normalized_messages
-            .iter()
-            .map(ApiMessage::from)
-            .collect();
+        let api_messages: Vec<ApiMessage> =
+            normalized_messages.iter().map(ApiMessage::from).collect();
 
         let api_tools: Option<Vec<ApiToolDefinition>> = if request.tools.is_empty() {
             None
@@ -117,13 +117,15 @@ impl AnthropicProvider {
             AnthropicStreamEvent::MessageStart { id, model, usage } => {
                 Some(StreamEvent::MessageStart { id, model, usage })
             }
-            AnthropicStreamEvent::ContentBlockStart { index, content_block } => {
-                Some(StreamEvent::ContentBlockStart { index, content_block })
-            }
+            AnthropicStreamEvent::ContentBlockStart {
+                index,
+                content_block,
+            } => Some(StreamEvent::ContentBlockStart {
+                index,
+                content_block,
+            }),
             AnthropicStreamEvent::ContentBlockDelta { index, delta } => match delta {
-                ContentDelta::TextDelta { text } => {
-                    Some(StreamEvent::TextDelta { index, text })
-                }
+                ContentDelta::TextDelta { text } => Some(StreamEvent::TextDelta { index, text }),
                 ContentDelta::ThinkingDelta { thinking } => {
                     Some(StreamEvent::ThinkingDelta { index, thinking })
                 }
@@ -131,7 +133,10 @@ impl AnthropicProvider {
                     Some(StreamEvent::SignatureDelta { index, signature })
                 }
                 ContentDelta::InputJsonDelta { partial_json } => {
-                    Some(StreamEvent::InputJsonDelta { index, partial_json })
+                    Some(StreamEvent::InputJsonDelta {
+                        index,
+                        partial_json,
+                    })
                 }
             },
             AnthropicStreamEvent::ContentBlockStop { index } => {
@@ -145,9 +150,13 @@ impl AnthropicProvider {
                 })
             }
             AnthropicStreamEvent::MessageStop => Some(StreamEvent::MessageStop),
-            AnthropicStreamEvent::Error { error_type, message } => {
-                Some(StreamEvent::Error { error_type, message })
-            }
+            AnthropicStreamEvent::Error {
+                error_type,
+                message,
+            } => Some(StreamEvent::Error {
+                error_type,
+                message,
+            }),
             AnthropicStreamEvent::Ping => None,
         }
     }
@@ -168,8 +177,7 @@ impl LlmProvider for AnthropicProvider {
     }
 
     async fn create_message(
-        &self,
-        request: ProviderRequest,
+        &self, request: ProviderRequest,
     ) -> Result<ProviderResponse, ProviderError> {
         // Collect stream events to build a complete response.
         let mut stream = self.create_message_stream(request).await?;
@@ -255,7 +263,10 @@ impl LlmProvider for AnthropicProvider {
                         }
                     }
                     StreamEvent::MessageStop => break,
-                    StreamEvent::Error { error_type, message } => {
+                    StreamEvent::Error {
+                        error_type,
+                        message,
+                    } => {
                         return Err(ProviderError::StreamError {
                             provider: self.id.clone(),
                             message: format!("[{}] {}", error_type, message),
@@ -290,8 +301,7 @@ impl LlmProvider for AnthropicProvider {
     }
 
     async fn create_message_stream(
-        &self,
-        request: ProviderRequest,
+        &self, request: ProviderRequest,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>, ProviderError>
     {
         let api_request = Self::build_request(&request);

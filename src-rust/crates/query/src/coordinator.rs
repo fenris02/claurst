@@ -147,13 +147,12 @@ impl Default for ScratchpadGate {
 
 /// Filter a tool list so only tools appropriate for `mode` are included.
 ///
-/// - `AgentMode::Coordinator`: all tools are available (coordinator has the
-///   full set including Agent/SendMessage/TaskStop).
+/// - `AgentMode::Coordinator`: all tools are available (coordinator has the full set including
+///   Agent/SendMessage/TaskStop).
 /// - `AgentMode::Worker`: COORDINATOR_ONLY_TOOLS are removed.
 /// - `AgentMode::Normal`: no filtering.
 pub fn filter_tools_for_mode<'a>(
-    tools: &'a [Box<dyn claurst_tools::Tool>],
-    mode: AgentMode,
+    tools: &'a [Box<dyn claurst_tools::Tool>], mode: AgentMode,
 ) -> Vec<&'a Box<dyn claurst_tools::Tool>> {
     match mode {
         AgentMode::Coordinator | AgentMode::Normal => tools.iter().collect(),
@@ -179,10 +178,7 @@ pub fn coordinator_user_context(available_tools: &[String], mcp_servers: &[Strin
         format!("\nConnected MCP servers: {}", mcp_servers.join(", "))
     };
 
-    format!(
-        "Available worker tools: {}{}\n",
-        tool_list, mcp_section
-    )
+    format!("Available worker tools: {}{}\n", tool_list, mcp_section)
 }
 
 /// Check if the current runtime coordinator flag matches `stored_coordinator`.
@@ -226,8 +222,9 @@ pub fn match_session_mode_from_agent_mode(session_mode: AgentMode) -> Option<Str
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::Mutex;
+
+    use super::*;
 
     // All tests that mutate COORDINATOR_ENV_VAR must hold this guard to avoid
     // data races when cargo test runs them in parallel.
@@ -329,11 +326,20 @@ mod tests {
     #[test]
     fn test_scratchpad_gate_blocks_write_until_unlocked() {
         let mut gate = ScratchpadGate::with_signal("SCRATCHPAD_READY");
-        assert!(!gate.check("Write"), "Write should be blocked before unlock");
-        assert!(!gate.check("FileWrite"), "FileWrite should be blocked before unlock");
+        assert!(
+            !gate.check("Write"),
+            "Write should be blocked before unlock"
+        );
+        assert!(
+            !gate.check("FileWrite"),
+            "FileWrite should be blocked before unlock"
+        );
         gate.try_unlock("Some content SCRATCHPAD_READY here");
         assert!(gate.check("Write"), "Write should be allowed after unlock");
-        assert!(gate.check("FileWrite"), "FileWrite should be allowed after unlock");
+        assert!(
+            gate.check("FileWrite"),
+            "FileWrite should be allowed after unlock"
+        );
     }
 
     #[test]

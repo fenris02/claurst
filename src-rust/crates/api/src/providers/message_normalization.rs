@@ -1,10 +1,7 @@
 use claurst_core::types::{ContentBlock, Message, MessageContent};
 
 pub(crate) fn remove_empty_messages(messages: &[Message]) -> Vec<Message> {
-    messages
-        .iter()
-        .filter_map(remove_empty_message)
-        .collect()
+    messages.iter().filter_map(remove_empty_message).collect()
 }
 
 pub(crate) fn normalize_anthropic_messages(messages: &[Message]) -> Vec<Message> {
@@ -77,9 +74,10 @@ fn remove_empty_block(block: &ContentBlock) -> Option<ContentBlock> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use claurst_core::types::{Message, Role, ToolResultContent};
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn remove_empty_messages_filters_empty_text_and_thinking() {

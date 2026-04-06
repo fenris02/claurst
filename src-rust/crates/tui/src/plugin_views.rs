@@ -1,10 +1,12 @@
 // plugin_views.rs — Plugin hint/recommendation UI elements and plugin list widget.
 
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph};
-use ratatui::Frame;
+use ratatui::{
+    Frame,
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
+};
 
 /// A dismissible banner shown at the top of the message area when a plugin
 /// wants to surface a hint or recommendation to the user.
@@ -40,11 +42,7 @@ impl PluginHintBanner {
 
 /// Render the first undismissed plugin hint banner into `area`.
 /// Returns the height consumed (0 if nothing rendered).
-pub fn render_plugin_hints(
-    frame: &mut Frame,
-    hints: &[PluginHintBanner],
-    area: Rect,
-) -> u16 {
+pub fn render_plugin_hints(frame: &mut Frame, hints: &[PluginHintBanner], area: Rect) -> u16 {
     let hint = match hints.iter().find(|h| h.is_visible()) {
         Some(h) => h,
         None => return 0,
@@ -71,14 +69,12 @@ pub fn render_plugin_hints(
         content
     };
 
-    let lines = vec![Line::from(vec![
-        Span::styled(
-            display,
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::ITALIC),
-        ),
-    ])];
+    let lines = vec![Line::from(vec![Span::styled(
+        display,
+        Style::default()
+            .fg(Color::White)
+            .add_modifier(Modifier::ITALIC),
+    )])];
 
     frame.render_widget(Clear, banner_area);
     let para = Paragraph::new(lines).block(
@@ -183,7 +179,10 @@ pub struct PluginListState {
 
 impl PluginListState {
     pub fn new(items: Vec<PluginListItem>) -> Self {
-        Self { items, ..Default::default() }
+        Self {
+            items,
+            ..Default::default()
+        }
     }
 
     pub fn move_up(&mut self) {
@@ -217,20 +216,14 @@ impl PluginListState {
 /// panel is rendered below the list.
 /// Returns the height consumed.
 pub fn render_plugin_list(
-    frame: &mut Frame,
-    state: &mut PluginListState,
-    area: Rect,
-    title: Option<&str>,
+    frame: &mut Frame, state: &mut PluginListState, area: Rect, title: Option<&str>,
 ) -> u16 {
     if area.height < 3 {
         return 0;
     }
 
     let items = &state.items;
-    let list_items: Vec<ListItem> = items
-        .iter()
-        .map(|p| ListItem::new(p.to_line()))
-        .collect();
+    let list_items: Vec<ListItem> = items.iter().map(|p| ListItem::new(p.to_line())).collect();
 
     let block_title = title.unwrap_or("Plugins");
     let total = items.len();
@@ -242,10 +235,7 @@ pub fn render_plugin_list(
         if area.height > detail_height + 3 {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Min(3),
-                    Constraint::Length(detail_height),
-                ])
+                .constraints([Constraint::Min(3), Constraint::Length(detail_height)])
                 .split(area);
             (chunks[0], Some(chunks[1]))
         } else {
@@ -297,8 +287,16 @@ pub fn render_plugin_detail(frame: &mut Frame, item: &PluginListItem, area: Rect
         Style::default().fg(Color::DarkGray)
     };
 
-    let cmd_label = if item.command_count == 1 { "command" } else { "commands" };
-    let hook_label = if item.hook_count == 1 { "hook" } else { "hooks" };
+    let cmd_label = if item.command_count == 1 {
+        "command"
+    } else {
+        "commands"
+    };
+    let hook_label = if item.hook_count == 1 {
+        "hook"
+    } else {
+        "hooks"
+    };
 
     let lines: Vec<Line> = vec![
         Line::from(vec![
@@ -321,17 +319,20 @@ pub fn render_plugin_detail(frame: &mut Frame, item: &PluginListItem, area: Rect
         Line::from(vec![
             Span::styled("  Counts:  ", Style::default().fg(Color::Cyan)),
             Span::styled(
-                format!("{} {}  •  {} {}", item.command_count, cmd_label, item.hook_count, hook_label),
+                format!(
+                    "{} {}  •  {} {}",
+                    item.command_count, cmd_label, item.hook_count, hook_label
+                ),
                 Style::default().fg(Color::White),
             ),
         ]),
         Line::from(vec![]),
-        Line::from(vec![
-            Span::styled(
-                "  [Enter] toggle detail   [j/k] navigate",
-                Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            "  [Enter] toggle detail   [j/k] navigate",
+            Style::default()
+                .fg(Color::DarkGray)
+                .add_modifier(Modifier::ITALIC),
+        )]),
     ];
 
     let block = Block::default()

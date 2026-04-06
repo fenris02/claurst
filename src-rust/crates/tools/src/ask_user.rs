@@ -1,10 +1,11 @@
 // AskUserQuestion tool: ask the human operator a question and wait for a response.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::debug;
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 pub struct AskUserQuestionTool;
 
@@ -73,7 +74,6 @@ impl Tool for AskUserQuestionTool {
             "type": "ask_user",
         });
 
-        ToolResult::success(format!("Question: {}", params.question))
-            .with_metadata(meta)
+        ToolResult::success(format!("Question: {}", params.question)).with_metadata(meta)
     }
 }

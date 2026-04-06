@@ -1,11 +1,13 @@
 // Glob tool: fast file pattern matching.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
+use std::path::PathBuf;
+
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
-use std::path::PathBuf;
+use serde_json::{Value, json};
 use tracing::debug;
+
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult};
 
 pub struct GlobTool;
 
@@ -65,10 +67,7 @@ impl Tool for GlobTool {
         debug!(pattern = %params.pattern, dir = %base_dir.display(), "Running glob");
 
         if !base_dir.exists() || !base_dir.is_dir() {
-            return ToolResult::error(format!(
-                "Directory not found: {}",
-                base_dir.display()
-            ));
+            return ToolResult::error(format!("Directory not found: {}", base_dir.display()));
         }
 
         // Build the full glob pattern

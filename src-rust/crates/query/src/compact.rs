@@ -6,10 +6,10 @@
 //
 // Strategy:
 //   1. Keep the last KEEP_RECENT_MESSAGES messages verbatim.
-//   2. Group messages by API round (same assistant message ID) and summarise
-//      all groups except the most recent KEEP_RECENT_MESSAGES worth.
-//   3. Replace the head of the conversation with a single synthetic
-//      <compact-summary> user message, followed by the recent tail.
+//   2. Group messages by API round (same assistant message ID) and summarise all groups except the
+//      most recent KEEP_RECENT_MESSAGES worth.
+//   3. Replace the head of the conversation with a single synthetic <compact-summary> user message,
+//      followed by the recent tail.
 //
 // The summary is generated in a single non-agentic API call so it doesn't
 // trigger another compaction recursively.
@@ -20,11 +20,17 @@
 //   the most recent `keep_recent_messages` intact.  This is lighter than a
 //   full compaction and can fire proactively at 75 % capacity.
 
-use claurst_api::{AnthropicStreamEvent, ApiMessage, CreateMessageRequest, StreamAccumulator, StreamHandler, SystemPrompt};
-use claurst_core::error::ClaudeError;
-use claurst_core::types::{ContentBlock, Message, MessageContent, Role};
-use serde_json::Value;
 use std::sync::Arc;
+
+use claurst_api::{
+    AnthropicStreamEvent, ApiMessage, CreateMessageRequest, StreamAccumulator, StreamHandler,
+    SystemPrompt,
+};
+use claurst_core::{
+    error::ClaudeError,
+    types::{ContentBlock, Message, MessageContent, Role},
+};
+use serde_json::Value;
 use tracing::{debug, info, warn};
 
 // ---------------------------------------------------------------------------
@@ -48,8 +54,8 @@ const KEEP_RECENT_MESSAGES: usize = 10;
 const MAX_CONSECUTIVE_FAILURES: u32 = 3;
 
 // Percentage thresholds for token warning states (mirrors TS autoCompact.ts)
-const WARNING_PCT: f64 = 0.80;   // 80 % full → yellow warning
-const CRITICAL_PCT: f64 = 0.95;  // 95 % full → red critical
+const WARNING_PCT: f64 = 0.80; // 80 % full → yellow warning
+const CRITICAL_PCT: f64 = 0.95; // 95 % full → red critical
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -121,7 +127,11 @@ impl MessageGroup {
     fn from_messages(messages: Vec<Message>) -> Self {
         let topic_hint = extract_topic_hint(&messages);
         let token_estimate = estimate_tokens_for_messages(&messages);
-        Self { messages, topic_hint, token_estimate }
+        Self {
+            messages,
+            topic_hint,
+            token_estimate,
+        }
     }
 }
 
@@ -160,10 +170,7 @@ fn estimate_tokens_for_messages(messages: &[Message]) -> usize {
         .iter()
         .map(|m| match &m.content {
             MessageContent::Text(t) => t.len(),
-            MessageContent::Blocks(blocks) => blocks
-                .iter()
-                .map(|b| estimate_block_chars(b))
-                .sum(),
+            MessageContent::Blocks(blocks) => blocks.iter().map(|b| estimate_block_chars(b)).sum(),
         })
         .sum();
     // chars / 4 = rough tokens, then * 4/3 padding
@@ -173,9 +180,7 @@ fn estimate_tokens_for_messages(messages: &[Message]) -> usize {
 fn estimate_block_chars(block: &ContentBlock) -> usize {
     match block {
         ContentBlock::Text { text } => text.len(),
-        ContentBlock::ToolUse { name, input, .. } => {
-            name.len() + input.to_string().len()
-        }
+        ContentBlock::ToolUse { name, input, .. } => name.len() + input.to_string().len(),
         ContentBlock::ToolResult { content, .. } => match content {
             claurst_core::types::ToolResultContent::Text(t) => t.len(),
             claurst_core::types::ToolResultContent::Blocks(blocks) => {
@@ -195,11 +200,11 @@ fn estimate_block_chars(block: &ContentBlock) -> usize {
 ///   [user_messages..., assistant_response]
 ///
 /// Boundary detection:
-/// - When messages have UUIDs, a new group fires at the START of each new
-///   assistant message whose UUID differs from the previous one.
-/// - When messages lack UUIDs (local / test messages), boundaries fire
-///   when an assistant message follows a PREVIOUS assistant in the current
-///   group — i.e. each assistant turn closes its own group.
+/// - When messages have UUIDs, a new group fires at the START of each new assistant message whose
+///   UUID differs from the previous one.
+/// - When messages lack UUIDs (local / test messages), boundaries fire when an assistant message
+///   follows a PREVIOUS assistant in the current group — i.e. each assistant turn closes its own
+///   group.
 ///
 /// The result is that user messages are grouped with the SUBSEQUENT assistant
 /// response that replies to them (matching TypeScript round semantics).
@@ -259,10 +264,7 @@ impl Default for MicroCompactConfig {
 ///
 /// Returns `Some(new_messages)` when compaction occurred, `None` otherwise.
 pub async fn micro_compact_if_needed(
-    client: &claurst_api::AnthropicClient,
-    messages: &[Message],
-    input_tokens: u64,
-    model: &str,
+    client: &claurst_api::AnthropicClient, messages: &[Message], input_tokens: u64, model: &str,
     config: &MicroCompactConfig,
 ) -> Option<Vec<Message>> {
     let window = context_window_for_model(model);
@@ -508,7 +510,9 @@ pub fn calculate_token_warning_state(input_tokens: u64, model: &str) -> TokenWar
 
     if pct >= CRITICAL_PCT {
         TokenWarningState::Critical
-    } else if pct >= WARNING_PCT || window.saturating_sub(input_tokens) <= WARNING_THRESHOLD_BUFFER_TOKENS {
+    } else if pct >= WARNING_PCT
+        || window.saturating_sub(input_tokens) <= WARNING_THRESHOLD_BUFFER_TOKENS
+    {
         TokenWarningState::Warning
     } else {
         TokenWarningState::Ok
@@ -533,10 +537,7 @@ pub fn should_auto_compact(input_tokens: u64, model: &str, state: &AutoCompactSt
 /// carefully crafted compaction prompt from TypeScript prompt.ts.
 /// Returns a new conversation: [summary user msg] + messages[split_at..].
 async fn summarise_head(
-    client: &claurst_api::AnthropicClient,
-    messages: &[Message],
-    split_at: usize,
-    model: &str,
+    client: &claurst_api::AnthropicClient, messages: &[Message], split_at: usize, model: &str,
     max_summary_tokens: u32,
 ) -> Result<Vec<Message>, ClaudeError> {
     if split_at == 0 {
@@ -569,12 +570,24 @@ async fn summarise_head(
                             name, id, input
                         ));
                     }
-                    ContentBlock::ToolResult { tool_use_id, content, is_error } => {
+                    ContentBlock::ToolResult {
+                        tool_use_id,
+                        content,
+                        is_error,
+                    } => {
                         let result_text = match content {
-                            claurst_core::types::ToolResultContent::Text(t) => t.as_str().to_string(),
-                            claurst_core::types::ToolResultContent::Blocks(_) => "[complex content]".to_string(),
+                            claurst_core::types::ToolResultContent::Text(t) => {
+                                t.as_str().to_string()
+                            }
+                            claurst_core::types::ToolResultContent::Blocks(_) => {
+                                "[complex content]".to_string()
+                            }
                         };
-                        let error_flag = if is_error.unwrap_or(false) { " [ERROR]" } else { "" };
+                        let error_flag = if is_error.unwrap_or(false) {
+                            " [ERROR]"
+                        } else {
+                            ""
+                        };
                         transcript.push_str(&format!(
                             "[Tool Result (id={}){}]\n{}\n\n",
                             tool_use_id, error_flag, result_text
@@ -590,10 +603,7 @@ async fn summarise_head(
 
     let user_content = format!(
         "{}\n\n<conversation_to_summarize original_messages=\"{}\" estimated_tokens=\"{}\">\n{}\n</conversation_to_summarize>",
-        compact_prompt,
-        original_count,
-        original_token_estimate,
-        transcript
+        compact_prompt, original_count, original_token_estimate, transcript
     );
 
     let api_msgs = vec![ApiMessage {
@@ -650,17 +660,12 @@ async fn summarise_head(
 /// Compact `messages` in-place, replacing the head with a summary.
 /// Returns the new messages vector on success.
 pub async fn compact_conversation(
-    client: &claurst_api::AnthropicClient,
-    messages: &[Message],
-    model: &str,
+    client: &claurst_api::AnthropicClient, messages: &[Message], model: &str,
 ) -> Result<Vec<Message>, ClaudeError> {
     let total = messages.len();
 
     if total <= KEEP_RECENT_MESSAGES + 1 {
-        debug!(
-            total,
-            "Too few messages to compact – keeping everything"
-        );
+        debug!(total, "Too few messages to compact – keeping everything");
         return Ok(messages.to_vec());
     }
 
@@ -674,17 +679,15 @@ pub async fn compact_conversation(
         "Compacting conversation"
     );
 
-    // Use a generous token budget for the summary (20k mirrors TypeScript MAX_OUTPUT_TOKENS_FOR_SUMMARY)
+    // Use a generous token budget for the summary (20k mirrors TypeScript
+    // MAX_OUTPUT_TOKENS_FOR_SUMMARY)
     summarise_head(client, messages, split_at, model, 20_000).await
 }
 
 /// Auto-compact `messages` if needed.  Updates `state` in place.
 /// Returns `Some(new_messages)` if compaction ran, `None` otherwise.
 pub async fn auto_compact_if_needed(
-    client: &claurst_api::AnthropicClient,
-    messages: &[Message],
-    input_tokens: u64,
-    model: &str,
+    client: &claurst_api::AnthropicClient, messages: &[Message], input_tokens: u64, model: &str,
     state: &mut AutoCompactState,
 ) -> Option<Vec<Message>> {
     if !should_auto_compact(input_tokens, model, state) {
@@ -727,18 +730,21 @@ pub async fn auto_compact_if_needed(
 //
 // Phase overview (mirrors reactiveCompact.ts):
 //   1. Check usage with `should_compact` / `should_context_collapse`.
-//   2. Strip image blocks from the conversation before compacting
-//      (reduces the size of the prompt sent to the summariser).
+//   2. Strip image blocks from the conversation before compacting (reduces the size of the prompt
+//      sent to the summariser).
 //   3. Call `summarise_head` to generate a compact summary.
-//   4. Re-inject recently-modified files (up to 5) as context.
-//      (In the Rust port this phase is a no-op stub — the TUI layer owns
-//      file-tracking; this file intentionally avoids the filesystem.)
+//   4. Re-inject recently-modified files (up to 5) as context. (In the Rust port this phase is a
+//      no-op stub — the TUI layer owns file-tracking; this file intentionally avoids the
+//      filesystem.)
 
 /// Trigger classification for reactive compact.
 #[derive(Debug, Clone)]
 pub enum CompactTrigger {
     /// Normal 90 %-threshold compact.
-    TokenThreshold { tokens_used: u64, context_limit: u64 },
+    TokenThreshold {
+        tokens_used: u64,
+        context_limit: u64,
+    },
     /// Caller requested an unconditional compact.
     Forced,
 }
@@ -787,7 +793,9 @@ pub fn should_context_collapse(tokens_used: u64, context_limit: u64) -> bool {
 /// Returns `(new_messages, rough_tokens_freed)`.
 ///
 /// Mirrors `snipCompact` from TypeScript (no API call required — purely local).
-pub fn snip_compact(messages: Vec<claurst_core::types::Message>, keep_n_newest: usize) -> (Vec<claurst_core::types::Message>, u64) {
+pub fn snip_compact(
+    messages: Vec<claurst_core::types::Message>, keep_n_newest: usize,
+) -> (Vec<claurst_core::types::Message>, u64) {
     let total = messages.len();
     if total <= keep_n_newest + 1 {
         // Nothing to snip.
@@ -803,8 +811,7 @@ pub fn snip_compact(messages: Vec<claurst_core::types::Message>, keep_n_newest: 
     }
 
     // Estimate how many tokens the snipped range held.
-    let snipped_tokens =
-        estimate_tokens_for_messages(&messages[snip_start..snip_end]) as u64;
+    let snipped_tokens = estimate_tokens_for_messages(&messages[snip_start..snip_end]) as u64;
 
     let mut result = Vec::with_capacity(1 + keep_n_newest);
     result.push(messages[0].clone());
@@ -819,7 +826,9 @@ pub fn snip_compact(messages: Vec<claurst_core::types::Message>, keep_n_newest: 
 /// Returns the cut index (0 = keep everything, messages.len() = keep nothing).
 /// Iterates from the newest message backwards, accumulating token estimates
 /// until the budget is exhausted.
-pub fn calculate_messages_to_keep_index(messages: &[claurst_core::types::Message], token_budget: u64) -> usize {
+pub fn calculate_messages_to_keep_index(
+    messages: &[claurst_core::types::Message], token_budget: u64,
+) -> usize {
     if messages.is_empty() {
         return 0;
     }
@@ -857,7 +866,8 @@ fn strip_images(messages: Vec<claurst_core::types::Message>) -> Vec<claurst_core
                 // If stripping left only an empty block list, collapse to a
                 // placeholder text so the conversation remains parseable.
                 if blocks.is_empty() {
-                    msg.content = MessageContent::Text("[image removed for compaction]".to_string());
+                    msg.content =
+                        MessageContent::Text("[image removed for compaction]".to_string());
                 }
             }
             msg
@@ -874,10 +884,8 @@ fn strip_images(messages: Vec<claurst_core::types::Message>) -> Vec<claurst_core
 /// The `cancel` token is checked before the API call so the user can abort
 /// a long-running compact.
 pub async fn reactive_compact(
-    messages: Vec<claurst_core::types::Message>,
-    client: &claurst_api::AnthropicClient,
-    config: &crate::QueryConfig,
-    cancel: tokio_util::sync::CancellationToken,
+    messages: Vec<claurst_core::types::Message>, client: &claurst_api::AnthropicClient,
+    config: &crate::QueryConfig, cancel: tokio_util::sync::CancellationToken,
     recently_modified: &[std::path::PathBuf],
 ) -> Result<CompactResult, claurst_core::error::ClaudeError> {
     if cancel.is_cancelled() {
@@ -908,8 +916,7 @@ pub async fn reactive_compact(
         });
     }
 
-    let original_token_estimate =
-        estimate_tokens_for_messages(&stripped[..split_at]) as u64;
+    let original_token_estimate = estimate_tokens_for_messages(&stripped[..split_at]) as u64;
 
     let mut new_messages =
         summarise_head(client, &stripped, split_at, &config.model, 20_000).await?;
@@ -963,13 +970,16 @@ pub async fn reactive_compact(
 /// context is at ≥ 97 % capacity and a regular reactive compact is unlikely
 /// to free enough space.
 pub async fn context_collapse(
-    messages: Vec<claurst_core::types::Message>,
-    client: &claurst_api::AnthropicClient,
+    messages: Vec<claurst_core::types::Message>, client: &claurst_api::AnthropicClient,
     config: &crate::QueryConfig,
 ) -> Result<CompactResult, claurst_core::error::ClaudeError> {
-    use claurst_api::{AnthropicStreamEvent, ApiMessage, CreateMessageRequest, StreamAccumulator, StreamHandler, SystemPrompt};
-    use serde_json::Value;
     use std::sync::Arc;
+
+    use claurst_api::{
+        AnthropicStreamEvent, ApiMessage, CreateMessageRequest, StreamAccumulator, StreamHandler,
+        SystemPrompt,
+    };
+    use serde_json::Value;
 
     let total = messages.len();
     if total == 0 {
@@ -1083,9 +1093,12 @@ const CONTEXT_COLLAPSE_THRESHOLD: f64 = 0.97;
 ///
 /// When the same file is read more than once in the conversation, replaces
 /// all but the last read with `[Content shown N time(s); showing last occurrence only]`.
-pub fn collapse_read_tool_results(messages: Vec<claurst_core::types::Message>) -> Vec<claurst_core::types::Message> {
-    use claurst_core::types::{ContentBlock, MessageContent, ToolResultContent};
+pub fn collapse_read_tool_results(
+    messages: Vec<claurst_core::types::Message>,
+) -> Vec<claurst_core::types::Message> {
     use std::collections::HashMap;
+
+    use claurst_core::types::{ContentBlock, MessageContent, ToolResultContent};
 
     // Helper: extract a fingerprint string from ToolResultContent.
     fn fingerprint(content: &ToolResultContent) -> Option<String> {
@@ -1143,9 +1156,12 @@ pub fn collapse_read_tool_results(messages: Vec<claurst_core::types::Message>) -
 ///
 /// If the same search was run more than once (same query), keep only the
 /// most recent result; replace earlier results with a truncation notice.
-pub fn collapse_search_results(messages: Vec<claurst_core::types::Message>) -> Vec<claurst_core::types::Message> {
-    use claurst_core::types::{ContentBlock, MessageContent, ToolResultContent};
+pub fn collapse_search_results(
+    messages: Vec<claurst_core::types::Message>,
+) -> Vec<claurst_core::types::Message> {
     use std::collections::HashSet;
+
+    use claurst_core::types::{ContentBlock, MessageContent, ToolResultContent};
 
     fn fingerprint(content: &ToolResultContent) -> Option<String> {
         match content {
@@ -1189,8 +1205,9 @@ pub fn collapse_search_results(messages: Vec<claurst_core::types::Message>) -> V
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use claurst_core::types::{Message, Role};
+
+    use super::*;
 
     fn make_user(text: &str) -> Message {
         Message::user(text)

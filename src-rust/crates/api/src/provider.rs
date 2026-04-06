@@ -4,14 +4,19 @@
 // intentionally minimal: only what is needed to send messages, list models,
 // and report capabilities.  Auth concerns live in `auth.rs`.
 
+use std::pin::Pin;
+
 use async_trait::async_trait;
 use claurst_core::provider_id::{ModelId, ProviderId};
 use futures::Stream;
 use serde::{Deserialize, Serialize};
-use std::pin::Pin;
 
-use crate::provider_error::ProviderError;
-use crate::provider_types::{ProviderCapabilities, ProviderRequest, ProviderResponse, ProviderStatus, StreamEvent};
+use crate::{
+    provider_error::ProviderError,
+    provider_types::{
+        ProviderCapabilities, ProviderRequest, ProviderResponse, ProviderStatus, StreamEvent,
+    },
+};
 
 // ---------------------------------------------------------------------------
 // ModelInfo
@@ -54,19 +59,14 @@ pub trait LlmProvider: Send + Sync {
 
     /// Send a message and receive a complete (non-streaming) response.
     async fn create_message(
-        &self,
-        request: ProviderRequest,
+        &self, request: ProviderRequest,
     ) -> Result<ProviderResponse, ProviderError>;
 
     /// Send a message and receive a streaming response as a pinned `Stream` of
     /// provider-agnostic `StreamEvent`s.
     async fn create_message_stream(
-        &self,
-        request: ProviderRequest,
-    ) -> Result<
-        Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>,
-        ProviderError,
-    >;
+        &self, request: ProviderRequest,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>, ProviderError>;
 
     /// Return the list of models available through this provider.
     ///

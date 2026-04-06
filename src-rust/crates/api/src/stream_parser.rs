@@ -4,13 +4,13 @@
 // Concrete parsing logic lives in the provider-specific adapter crates and
 // will be filled in during Phase 2A.
 
+use std::pin::Pin;
+
 use async_trait::async_trait;
 use claurst_core::provider_id::ProviderId;
 use futures::Stream;
-use std::pin::Pin;
 
-use crate::provider_error::ProviderError;
-use crate::provider_types::StreamEvent;
+use crate::{provider_error::ProviderError, provider_types::StreamEvent};
 
 // ---------------------------------------------------------------------------
 // StreamParser
@@ -30,12 +30,8 @@ pub trait StreamParser: Send + Sync {
     /// The returned stream yields `Ok(event)` for each successfully decoded
     /// event and `Err(ProviderError)` if parsing fails mid-stream.
     async fn parse(
-        &self,
-        response: reqwest::Response,
-    ) -> Result<
-        Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>,
-        ProviderError,
-    >;
+        &self, response: reqwest::Response,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>, ProviderError>;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,12 +58,9 @@ impl Default for SseStreamParser {
 #[async_trait]
 impl StreamParser for SseStreamParser {
     async fn parse(
-        &self,
-        _response: reqwest::Response,
-    ) -> Result<
-        Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>,
-        ProviderError,
-    > {
+        &self, _response: reqwest::Response,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>, ProviderError>
+    {
         // Will be implemented in Phase 2A.
         Err(ProviderError::Other {
             provider: ProviderId::new("unknown"),
@@ -102,12 +95,9 @@ impl Default for JsonLinesStreamParser {
 #[async_trait]
 impl StreamParser for JsonLinesStreamParser {
     async fn parse(
-        &self,
-        _response: reqwest::Response,
-    ) -> Result<
-        Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>,
-        ProviderError,
-    > {
+        &self, _response: reqwest::Response,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamEvent, ProviderError>> + Send>>, ProviderError>
+    {
         // Will be implemented in Phase 2A.
         Err(ProviderError::Other {
             provider: ProviderId::new("unknown"),

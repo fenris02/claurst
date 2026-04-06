@@ -1,13 +1,12 @@
 // voice_capture.rs — PTT microphone capture and Whisper transcription for the TUI.
 //
 // This module owns the push-to-talk lifecycle:
-//   1. `VoiceRecorder::start_recording()` opens the default input device and
-//      begins buffering f32 mono samples.
-//   2. `VoiceRecorder::stop_recording()` stops the capture stream and returns
-//      the accumulated samples.
+//   1. `VoiceRecorder::start_recording()` opens the default input device and begins buffering f32
+//      mono samples.
+//   2. `VoiceRecorder::stop_recording()` stops the capture stream and returns the accumulated
+//      samples.
 //   3. `samples_to_wav_bytes()` encodes the samples as a 16-bit mono WAV blob.
-//   4. `transcribe()` POSTs the WAV blob to the OpenAI Whisper API and returns
-//      the transcript text.
+//   4. `transcribe()` POSTs the WAV blob to the OpenAI Whisper API and returns the transcript text.
 //
 // The audio capture path is gated behind the `voice` feature flag.  When the
 // feature is disabled every function that would touch hardware returns an
@@ -18,7 +17,6 @@ use std::sync::{Arc, Mutex};
 // ---------------------------------------------------------------------------
 // Re-export core voice types so callers only import from one place
 // ---------------------------------------------------------------------------
-
 pub use claurst_core::voice::{
     VoiceAvailability, VoiceConfig, VoiceEvent, VoiceRecorder as CoreVoiceRecorder,
     check_voice_availability, global_voice_recorder,
@@ -67,8 +65,7 @@ impl VoiceRecorder {
     /// Returns an error when no microphone is available or the `voice` feature
     /// is not compiled in.
     pub fn start_recording(
-        &mut self,
-        event_tx: tokio::sync::mpsc::Sender<VoiceEvent>,
+        &mut self, event_tx: tokio::sync::mpsc::Sender<VoiceEvent>,
     ) -> anyhow::Result<()> {
         if self.capture.is_some() {
             // Already recording — no-op.
@@ -189,11 +186,11 @@ pub fn samples_to_wav_bytes(samples: &[f32], sample_rate: u32) -> Vec<u8> {
     // fmt chunk
     buf.extend_from_slice(b"fmt ");
     buf.extend_from_slice(&16u32.to_le_bytes()); // chunk size
-    buf.extend_from_slice(&1u16.to_le_bytes());  // PCM audio format
-    buf.extend_from_slice(&1u16.to_le_bytes());  // mono
+    buf.extend_from_slice(&1u16.to_le_bytes()); // PCM audio format
+    buf.extend_from_slice(&1u16.to_le_bytes()); // mono
     buf.extend_from_slice(&sample_rate.to_le_bytes());
     buf.extend_from_slice(&byte_rate.to_le_bytes());
-    buf.extend_from_slice(&2u16.to_le_bytes());  // block align (1 ch × 2 bytes)
+    buf.extend_from_slice(&2u16.to_le_bytes()); // block align (1 ch × 2 bytes)
     buf.extend_from_slice(&16u16.to_le_bytes()); // bits per sample
 
     // data chunk
@@ -243,11 +240,7 @@ pub async fn transcribe(wav_bytes: Vec<u8>, api_key: &str) -> anyhow::Result<Str
     let status = response.status();
     if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
-        return Err(anyhow::anyhow!(
-            "Whisper API returned {}: {}",
-            status,
-            body
-        ));
+        return Err(anyhow::anyhow!("Whisper API returned {}: {}", status, body));
     }
 
     let json: serde_json::Value = response.json().await?;
@@ -266,7 +259,11 @@ pub fn resolve_api_key() -> Option<String> {
     std::env::var("OPENAI_API_KEY")
         .ok()
         .filter(|k| !k.is_empty())
-        .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok().filter(|k| !k.is_empty()))
+        .or_else(|| {
+            std::env::var("ANTHROPIC_API_KEY")
+                .ok()
+                .filter(|k| !k.is_empty())
+        })
 }
 
 // ---------------------------------------------------------------------------

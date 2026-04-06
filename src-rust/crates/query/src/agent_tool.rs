@@ -10,27 +10,29 @@
 //   - Returns its final output as the tool result
 //
 // New capabilities (TS parity):
-//   - `isolation: "worktree"` — run the agent in a dedicated git worktree so
-//     file edits don't conflict with the parent checkout or sibling agents.
-//   - `run_in_background: true` — fire-and-forget; returns agent_id immediately.
-//     Use poll_background_agent() to check completion status.
+//   - `isolation: "worktree"` — run the agent in a dedicated git worktree so file edits don't
+//     conflict with the parent checkout or sibling agents.
+//   - `run_in_background: true` — fire-and-forget; returns agent_id immediately. Use
+//     poll_background_agent() to check completion status.
+
+use std::{
+    path::{Path, PathBuf},
+    pin::Pin,
+    sync::Arc,
+};
 
 use async_trait::async_trait;
-use claurst_api::client::ClientConfig;
-use claurst_api::AnthropicClient;
+use claurst_api::{AnthropicClient, client::ClientConfig};
 use claurst_core::types::Message;
 use claurst_tools::{PermissionLevel, Tool, ToolContext, ToolResult};
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
-use serde_json::{json, Value};
-use std::path::{Path, PathBuf};
-use std::pin::Pin;
-use std::sync::Arc;
+use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 
-use crate::{run_query_loop, QueryConfig, QueryOutcome};
+use crate::{QueryConfig, QueryOutcome, run_query_loop};
 
 // ---------------------------------------------------------------------------
 // Background agent registry
@@ -235,7 +237,7 @@ impl Tool for AgentTool {
             None => {
                 return ToolResult::error(
                     "ANTHROPIC_API_KEY not set - cannot spawn sub-agent".to_string(),
-                )
+                );
             }
         };
 
@@ -282,10 +284,8 @@ impl Tool for AgentTool {
                             let p = entry.path();
                             if p.extension().map_or(false, |e| e == "md") {
                                 if let Ok(content) = std::fs::read_to_string(&p) {
-                                    let name = p
-                                        .file_stem()
-                                        .and_then(|s| s.to_str())
-                                        .unwrap_or("agent");
+                                    let name =
+                                        p.file_stem().and_then(|s| s.to_str()).unwrap_or("agent");
                                     agent_defs.push_str(&format!(
                                         "\n\n## Agent: {}\n{}",
                                         name,
@@ -456,25 +456,21 @@ impl Tool for AgentTool {
                 );
                 ToolResult::success(text)
             }
-            QueryOutcome::MaxTokens { partial_message, .. } => {
+            QueryOutcome::MaxTokens {
+                partial_message, ..
+            } => {
                 let text = partial_message.get_all_text();
-                ToolResult::success(format!(
-                    "{}\n\n[Note: Agent hit max_tokens limit]",
-                    text
-                ))
+                ToolResult::success(format!("{}\n\n[Note: Agent hit max_tokens limit]", text))
             }
-            QueryOutcome::Cancelled => {
-                ToolResult::error("Sub-agent was cancelled".to_string())
-            }
-            QueryOutcome::Error(e) => {
-                ToolResult::error(format!("Sub-agent error: {}", e))
-            }
-            QueryOutcome::BudgetExceeded { cost_usd, limit_usd } => {
-                ToolResult::error(format!(
-                    "Sub-agent stopped: budget ${:.4} exceeded (limit ${:.4})",
-                    cost_usd, limit_usd
-                ))
-            }
+            QueryOutcome::Cancelled => ToolResult::error("Sub-agent was cancelled".to_string()),
+            QueryOutcome::Error(e) => ToolResult::error(format!("Sub-agent error: {}", e)),
+            QueryOutcome::BudgetExceeded {
+                cost_usd,
+                limit_usd,
+            } => ToolResult::error(format!(
+                "Sub-agent stopped: budget ${:.4} exceeded (limit ${:.4})",
+                cost_usd, limit_usd
+            )),
         }
     }
 }
@@ -486,13 +482,18 @@ impl Tool for AgentTool {
 fn format_outcome(outcome: QueryOutcome) -> String {
     match outcome {
         QueryOutcome::EndTurn { message, .. } => message.get_all_text(),
-        QueryOutcome::MaxTokens { partial_message, .. } => format!(
+        QueryOutcome::MaxTokens {
+            partial_message, ..
+        } => format!(
             "{}\n\n[Note: Agent hit max_tokens limit]",
             partial_message.get_all_text()
         ),
         QueryOutcome::Cancelled => "[Agent was cancelled]".to_string(),
         QueryOutcome::Error(e) => format!("[Agent error: {}]", e),
-        QueryOutcome::BudgetExceeded { cost_usd, limit_usd } => format!(
+        QueryOutcome::BudgetExceeded {
+            cost_usd,
+            limit_usd,
+        } => format!(
             "[Agent stopped: budget ${:.4} exceeded (limit ${:.4})]",
             cost_usd, limit_usd
         ),
@@ -534,22 +535,23 @@ pub fn init_team_swarm_runner() {
                         return format!(
                             "[Agent '{}' failed: ANTHROPIC_API_KEY not set]",
                             description
-                        )
+                        );
                     }
                 };
 
-                let client = match claurst_api::AnthropicClient::new(claurst_api::client::ClientConfig {
-                    api_key,
-                    ..Default::default()
-                }) {
-                    Ok(c) => Arc::new(c),
-                    Err(e) => {
-                        return format!(
-                            "[Agent '{}' failed to create client: {}]",
-                            description, e
-                        )
-                    }
-                };
+                let client =
+                    match claurst_api::AnthropicClient::new(claurst_api::client::ClientConfig {
+                        api_key,
+                        ..Default::default()
+                    }) {
+                        Ok(c) => Arc::new(c),
+                        Err(e) => {
+                            return format!(
+                                "[Agent '{}' failed to create client: {}]",
+                                description, e
+                            );
+                        }
+                    };
 
                 // Build the tool list, filtering to the allowlist if provided.
                 let all = claurst_tools::all_tools();

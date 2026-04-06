@@ -10,26 +10,29 @@
 //  Windows → falls back to the existing cmd.exe approach; ConPTY is available
 //             in portable_pty but adds complexity for minimal gain on Windows.
 
-use crate::{PermissionLevel, Tool, ToolContext, ToolResult, session_shell_state};
+#[cfg(unix)]
+use std::collections::HashMap;
+use std::{path::PathBuf, process::Stdio, time::Duration};
+
 use async_trait::async_trait;
-use claurst_core::bash_classifier::{BashRiskLevel, classify_bash_command};
-use claurst_core::tasks::{BackgroundTask, global_registry};
+use claurst_core::{
+    bash_classifier::{BashRiskLevel, classify_bash_command},
+    tasks::{BackgroundTask, global_registry},
+};
+#[cfg(unix)]
+use regex::Regex;
 use serde::Deserialize;
-use serde_json::{json, Value};
-use std::path::PathBuf;
-use std::process::Stdio;
-use std::time::Duration;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
+use serde_json::{Value, json};
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+};
 use tracing::debug;
 
 // Unix-only imports used by the shell-state helpers and PTY execution path.
 #[cfg(unix)]
 use crate::ShellState;
-#[cfg(unix)]
-use regex::Regex;
-#[cfg(unix)]
-use std::collections::HashMap;
+use crate::{PermissionLevel, Tool, ToolContext, ToolResult, session_shell_state};
 
 /// Sentinel appended to the shell wrapper script (Unix only).
 #[cfg(unix)]
@@ -72,8 +75,15 @@ fn parse_shell_state_block(lines: &[String]) -> Option<(PathBuf, HashMap<String,
             let key = line[..eq].to_string();
             let val = line[eq + 1..].to_string();
             if !key.starts_with('_')
-                && !["SHLVL", "BASH_LINENO", "BASH_SOURCE", "FUNCNAME", "PIPESTATUS", "OLDPWD"]
-                    .contains(&key.as_str())
+                && ![
+                    "SHLVL",
+                    "BASH_LINENO",
+                    "BASH_SOURCE",
+                    "FUNCNAME",
+                    "PIPESTATUS",
+                    "OLDPWD",
+                ]
+                .contains(&key.as_str())
             {
                 env_vars.insert(key, val);
             }
@@ -85,10 +95,9 @@ fn parse_shell_state_block(lines: &[String]) -> Option<(PathBuf, HashMap<String,
 
 #[cfg(unix)]
 fn extract_exports_from_command(command: &str) -> HashMap<String, String> {
-    let re = Regex::new(
-        r#"(?m)^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"]*)"|'([^']*)'|(\S*))"#,
-    )
-    .unwrap();
+    let re =
+        Regex::new(r#"(?m)^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"]*)"|'([^']*)'|(\S*))"#)
+            .unwrap();
     let mut map = HashMap::new();
     for cap in re.captures_iter(command) {
         let key = cap[1].to_string();
@@ -298,12 +307,11 @@ fn strip_ansi(s: &str) -> String {
 
 #[cfg(unix)]
 async fn run_in_pty(
-    script: &str,
-    working_dir: &str,
-    timeout: Duration,
+    script: &str, working_dir: &str, timeout: Duration,
 ) -> Result<(String, i32), String> {
-    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
     use std::io::Read;
+
+    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 
     let pty_system = native_pty_system();
 
@@ -380,10 +388,7 @@ async fn run_in_pty(
 
 #[cfg(windows)]
 async fn run_windows_fallback(
-    command: &str,
-    effective_cwd: &PathBuf,
-    timeout_dur: Duration,
-    timeout_ms: u64,
+    command: &str, effective_cwd: &PathBuf, timeout_dur: Duration, timeout_ms: u64,
 ) -> ToolResult {
     let mut child = match Command::new("cmd")
         .arg("/C")
@@ -469,7 +474,10 @@ fn truncate_output(mut output: String, exit_code: i32) -> ToolResult {
     }
 
     if exit_code != 0 {
-        ToolResult::error(format!("Command exited with code {}\n{}", exit_code, output))
+        ToolResult::error(format!(
+            "Command exited with code {}\n{}",
+            exit_code, output
+        ))
     } else {
         ToolResult::success(output)
     }
@@ -580,9 +588,11 @@ impl Tool for PtyBashTool {
                 (script, wd)
             };
 
-            let result =
-                tokio::time::timeout(timeout_dur, run_in_pty(&script, &working_dir_str, timeout_dur))
-                    .await;
+            let result = tokio::time::timeout(
+                timeout_dur,
+                run_in_pty(&script, &working_dir_str, timeout_dur),
+            )
+            .await;
 
             match result {
                 Ok(Ok((raw_output, exit_code))) => {
@@ -590,8 +600,7 @@ impl Tool for PtyBashTool {
                     let cleaned = strip_ansi(&raw_output);
 
                     // Split into user-visible lines and state block
-                    let all_lines: Vec<String> =
-                        cleaned.lines().map(|l| l.to_string()).collect();
+                    let all_lines: Vec<String> = cleaned.lines().map(|l| l.to_string()).collect();
 
                     let sentinel_pos = all_lines
                         .iter()

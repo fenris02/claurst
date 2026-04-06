@@ -11,15 +11,18 @@
 // navigation, and validation.  The caller is responsible for:
 //   1. Parsing the incoming JSON Schema into `Vec<ElicitationField>`.
 //   2. Calling `ElicitationDialogState::show(...)` when a request arrives.
-//   3. Polling `ElicitationDialogState::take_result()` after each key event to
-//      detect a submitted or cancelled response.
+//   3. Polling `ElicitationDialogState::take_result()` after each key event to detect a submitted
+//      or cancelled response.
 
-use ratatui::buffer::Buffer;
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget};
 use std::collections::HashMap;
+
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, Paragraph, Widget},
+};
 
 // ---------------------------------------------------------------------------
 // Field kinds
@@ -33,7 +36,10 @@ pub enum ElicitationFieldKind {
     /// Single-value selection from a list of (value, label) pairs.
     Enum { options: Vec<(String, String)> },
     /// Multiple-value selection from a list of (value, label, selected) triples.
-    MultiEnum { options: Vec<(String, String)>, checked: Vec<bool> },
+    MultiEnum {
+        options: Vec<(String, String)>,
+        checked: Vec<bool>,
+    },
     /// Boolean yes/no toggle.
     Boolean,
     /// URL input (text with URL hint).
@@ -80,9 +86,7 @@ impl ElicitationField {
 
     /// Create an enum field.
     pub fn enum_field(
-        name: impl Into<String>,
-        title: impl Into<String>,
-        options: Vec<(String, String)>,
+        name: impl Into<String>, title: impl Into<String>, options: Vec<(String, String)>,
     ) -> Self {
         let first_value = options.first().map(|(v, _)| v.clone()).unwrap_or_default();
         Self {
@@ -112,9 +116,7 @@ impl ElicitationField {
     /// Returns a JSON-compatible value for this field's current state.
     pub fn json_value(&self) -> serde_json::Value {
         match &self.kind {
-            ElicitationFieldKind::Boolean => {
-                serde_json::Value::Bool(self.value == "true")
-            }
+            ElicitationFieldKind::Boolean => serde_json::Value::Bool(self.value == "true"),
             ElicitationFieldKind::MultiEnum { options, checked } => {
                 let selected: Vec<serde_json::Value> = options
                     .iter()
@@ -187,9 +189,7 @@ impl ElicitationDialogState {
 
     /// Show the dialog with the given server name, optional message, and fields.
     pub fn show(
-        &mut self,
-        server_name: impl Into<String>,
-        message: Option<impl Into<String>>,
+        &mut self, server_name: impl Into<String>, message: Option<impl Into<String>>,
         fields: Vec<ElicitationField>,
     ) {
         self.server_name = server_name.into();
@@ -244,7 +244,9 @@ impl ElicitationDialogState {
 
     /// Append a character to the active text/url/enum-typeahead field.
     pub fn insert_char(&mut self, ch: char) {
-        let Some(field) = self.fields.get_mut(self.active_field) else { return };
+        let Some(field) = self.fields.get_mut(self.active_field) else {
+            return;
+        };
         field.error = None;
         match &mut field.kind {
             ElicitationFieldKind::Text { .. } | ElicitationFieldKind::Url => {
@@ -256,8 +258,7 @@ impl ElicitationDialogState {
                 let candidate = format!("{}{}", field.value, ch);
                 let lower = candidate.to_lowercase();
                 if let Some((found_v, _)) = options.iter().find(|(val, lbl)| {
-                    lbl.to_lowercase().starts_with(&lower)
-                        || val.to_lowercase().starts_with(&lower)
+                    lbl.to_lowercase().starts_with(&lower) || val.to_lowercase().starts_with(&lower)
                 }) {
                     field.value = found_v.clone();
                 }
@@ -268,7 +269,9 @@ impl ElicitationDialogState {
 
     /// Delete the last character from the active text/url field.
     pub fn backspace(&mut self) {
-        let Some(field) = self.fields.get_mut(self.active_field) else { return };
+        let Some(field) = self.fields.get_mut(self.active_field) else {
+            return;
+        };
         match &field.kind {
             ElicitationFieldKind::Text { .. } | ElicitationFieldKind::Url => {
                 field.value.pop();
@@ -279,10 +282,15 @@ impl ElicitationDialogState {
 
     /// For enum fields: cycle to the next option.
     pub fn cycle_enum_next(&mut self) {
-        let Some(field) = self.fields.get_mut(self.active_field) else { return };
+        let Some(field) = self.fields.get_mut(self.active_field) else {
+            return;
+        };
         if let ElicitationFieldKind::Enum { options } = &field.kind {
             let options = options.clone();
-            let idx = options.iter().position(|(v, _)| *v == field.value).unwrap_or(0);
+            let idx = options
+                .iter()
+                .position(|(v, _)| *v == field.value)
+                .unwrap_or(0);
             let next = (idx + 1) % options.len();
             field.value = options[next].0.clone();
         }
@@ -290,10 +298,15 @@ impl ElicitationDialogState {
 
     /// For enum fields: cycle to the previous option.
     pub fn cycle_enum_prev(&mut self) {
-        let Some(field) = self.fields.get_mut(self.active_field) else { return };
+        let Some(field) = self.fields.get_mut(self.active_field) else {
+            return;
+        };
         if let ElicitationFieldKind::Enum { options } = &field.kind {
             let options = options.clone();
-            let idx = options.iter().position(|(v, _)| *v == field.value).unwrap_or(0);
+            let idx = options
+                .iter()
+                .position(|(v, _)| *v == field.value)
+                .unwrap_or(0);
             let prev = if idx == 0 { options.len() - 1 } else { idx - 1 };
             field.value = options[prev].0.clone();
         }
@@ -301,7 +314,9 @@ impl ElicitationDialogState {
 
     /// For boolean or multi-enum fields: toggle the current selection.
     pub fn toggle_active(&mut self) {
-        let Some(field) = self.fields.get_mut(self.active_field) else { return };
+        let Some(field) = self.fields.get_mut(self.active_field) else {
+            return;
+        };
         match &mut field.kind {
             ElicitationFieldKind::Boolean => {
                 field.value = if field.value == "true" {
@@ -323,10 +338,14 @@ impl ElicitationDialogState {
 
     /// For multi-enum fields: move the sub-cursor down.
     pub fn multi_enum_next(&mut self) {
-        let Some(field) = self.fields.get_mut(self.active_field) else { return };
+        let Some(field) = self.fields.get_mut(self.active_field) else {
+            return;
+        };
         if let ElicitationFieldKind::MultiEnum { checked, .. } = &field.kind {
             let n = checked.len();
-            if n == 0 { return; }
+            if n == 0 {
+                return;
+            }
             let cur: usize = field.value.parse().unwrap_or(0);
             field.value = ((cur + 1) % n).to_string();
         }
@@ -334,10 +353,14 @@ impl ElicitationDialogState {
 
     /// For multi-enum fields: move the sub-cursor up.
     pub fn multi_enum_prev(&mut self) {
-        let Some(field) = self.fields.get_mut(self.active_field) else { return };
+        let Some(field) = self.fields.get_mut(self.active_field) else {
+            return;
+        };
         if let ElicitationFieldKind::MultiEnum { checked, .. } = &field.kind {
             let n = checked.len();
-            if n == 0 { return; }
+            if n == 0 {
+                return;
+            }
             let cur: usize = field.value.parse().unwrap_or(0);
             field.value = (if cur == 0 { n - 1 } else { cur - 1 }).to_string();
         }
@@ -361,7 +384,12 @@ pub fn render_elicitation_dialog(state: &ElicitationDialogState, area: Rect, buf
     let dialog_w = 64u16.min(area.width.saturating_sub(4));
     let x = area.x + (area.width.saturating_sub(dialog_w)) / 2;
     let y = area.y + (area.height.saturating_sub(dialog_h)) / 2;
-    let dialog_area = Rect { x, y, width: dialog_w, height: dialog_h };
+    let dialog_area = Rect {
+        x,
+        y,
+        width: dialog_w,
+        height: dialog_h,
+    };
 
     Clear.render(dialog_area, buf);
 
@@ -405,7 +433,9 @@ pub fn render_elicitation_dialog(state: &ElicitationDialogState, area: Rect, buf
     for (idx, field) in state.fields.iter().enumerate() {
         let focused = idx == state.active_field;
         let label_style = if focused {
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(Color::Gray)
         };
@@ -458,7 +488,9 @@ pub fn render_elicitation_dialog(state: &ElicitationDialogState, area: Rect, buf
     Paragraph::new(visible_lines).render(inner, buf);
 }
 
-fn render_field_value_line<'a>(field: &'a ElicitationField, focused: bool, width: usize) -> Line<'a> {
+fn render_field_value_line<'a>(
+    field: &'a ElicitationField, focused: bool, width: usize,
+) -> Line<'a> {
     let input_bg = if focused {
         Color::Rgb(30, 30, 60)
     } else {
@@ -488,7 +520,11 @@ fn render_field_value_line<'a>(field: &'a ElicitationField, focused: bool, width
                 .find(|(v, _)| *v == field.value)
                 .map(|(_, l)| l.as_str())
                 .unwrap_or(field.value.as_str());
-            let hint = if focused { " ◀ ▶ arrows to change" } else { "" };
+            let hint = if focused {
+                " ◀ ▶ arrows to change"
+            } else {
+                ""
+            };
             Line::from(vec![
                 Span::styled("   ", Style::default()),
                 Span::styled(
@@ -496,7 +532,11 @@ fn render_field_value_line<'a>(field: &'a ElicitationField, focused: bool, width
                     Style::default()
                         .fg(Color::White)
                         .bg(input_bg)
-                        .add_modifier(if focused { Modifier::BOLD } else { Modifier::empty() }),
+                        .add_modifier(if focused {
+                            Modifier::BOLD
+                        } else {
+                            Modifier::empty()
+                        }),
                 ),
                 Span::styled(hint, Style::default().fg(Color::DarkGray)),
             ])
@@ -509,7 +549,9 @@ fn render_field_value_line<'a>(field: &'a ElicitationField, focused: bool, width
                 let on_cursor = focused && i == sub_cursor;
                 let check = if is_checked { "[x] " } else { "[ ] " };
                 let style = if on_cursor {
-                    Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD)
                 } else if is_checked {
                     Style::default().fg(Color::Green)
                 } else {
@@ -525,16 +567,26 @@ fn render_field_value_line<'a>(field: &'a ElicitationField, focused: bool, width
             let checked = field.value == "true";
             let (yes_style, no_style) = if checked {
                 (
-                    Style::default().fg(Color::Black).bg(Color::Green).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::Black)
+                        .bg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
                     Style::default().fg(Color::DarkGray),
                 )
             } else {
                 (
                     Style::default().fg(Color::DarkGray),
-                    Style::default().fg(Color::Black).bg(Color::Red).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::Black)
+                        .bg(Color::Red)
+                        .add_modifier(Modifier::BOLD),
                 )
             };
-            let hint = if focused { " Space/Enter to toggle" } else { "" };
+            let hint = if focused {
+                " Space/Enter to toggle"
+            } else {
+                ""
+            };
             Line::from(vec![
                 Span::raw("   "),
                 Span::styled(" Yes ", yes_style),
@@ -548,7 +600,9 @@ fn render_field_value_line<'a>(field: &'a ElicitationField, focused: bool, width
 
 /// Simple word-wrap helper for the request message.
 fn wrap_str(s: &str, width: usize) -> Vec<String> {
-    if width == 0 { return vec![s.to_string()]; }
+    if width == 0 {
+        return vec![s.to_string()];
+    }
     let mut lines = Vec::new();
     let mut current = String::new();
     for word in s.split_whitespace() {
@@ -562,7 +616,9 @@ fn wrap_str(s: &str, width: usize) -> Vec<String> {
             current = word.to_string();
         }
     }
-    if !current.is_empty() { lines.push(current); }
+    if !current.is_empty() {
+        lines.push(current);
+    }
     lines
 }
 
@@ -572,8 +628,9 @@ fn wrap_str(s: &str, width: usize) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ratatui::layout::Rect;
+
+    use super::*;
 
     fn make_dialog() -> ElicitationDialogState {
         let mut s = ElicitationDialogState::new();
@@ -766,20 +823,40 @@ mod tests {
     #[test]
     fn elicitation_render_smoke() {
         let s = make_dialog();
-        let area = Rect { x: 0, y: 0, width: 100, height: 30 };
+        let area = Rect {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 30,
+        };
         let mut buf = ratatui::buffer::Buffer::empty(area);
         render_elicitation_dialog(&s, area, &mut buf);
-        let rendered = buf.content.iter().map(|c| c.symbol()).collect::<Vec<_>>().join("");
+        let rendered = buf
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<Vec<_>>()
+            .join("");
         assert!(rendered.contains("test-server") || rendered.contains("Input Required"));
     }
 
     #[test]
     fn elicitation_not_rendered_when_invisible() {
         let s = ElicitationDialogState::new();
-        let area = Rect { x: 0, y: 0, width: 100, height: 30 };
+        let area = Rect {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 30,
+        };
         let mut buf = ratatui::buffer::Buffer::empty(area);
         render_elicitation_dialog(&s, area, &mut buf);
-        let rendered = buf.content.iter().map(|c| c.symbol()).collect::<Vec<_>>().join("");
+        let rendered = buf
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<Vec<_>>()
+            .join("");
         assert!(!rendered.contains("Input Required"));
     }
 

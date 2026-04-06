@@ -4,9 +4,8 @@
 //! and builds a searchable index. The query loop injects the skill listing
 //! as a tool-context attachment when the index is ready.
 
-use std::collections::HashMap;
-use std::path::Path;
-use std::sync::Arc;
+use std::{collections::HashMap, path::Path, sync::Arc};
+
 use tokio::sync::RwLock;
 
 /// A single skill definition.
@@ -198,7 +197,10 @@ pub fn format_skill_listing(index: &SkillIndex) -> String {
         } else {
             format!(" [{}]", skill.tags.join(", "))
         };
-        out.push_str(&format!("  /{} — {}{}\n", skill.name, skill.description, tags));
+        out.push_str(&format!(
+            "  /{} — {}{}\n",
+            skill.name, skill.description, tags
+        ));
     }
     out
 }
