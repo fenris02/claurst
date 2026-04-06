@@ -12,9 +12,6 @@ workspace = true
 
 [dependencies]
 claurst-core = { workspace = true }
-
-# Async
-async-trait = { workspace = true }
 futures     = { workspace = true }
 tokio       = { workspace = true }
 
@@ -46,10 +43,6 @@ urlencoding = { workspace = true }
 
 # Zip extraction for plugin archives
 zip = { workspace = true, features = ["deflate"] }
-
-# Utilities
-once_cell   = { workspace = true }
-parking_lot = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

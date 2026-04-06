@@ -120,7 +120,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -131,7 +131,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -618,7 +618,6 @@ name = "claurst-acp"
 version = "0.0.8"
 dependencies = [
  "anyhow",
- "async-trait",
  "chrono",
  "claurst-api",
  "claurst-core",
@@ -635,22 +634,17 @@ dependencies = [
  "anyhow",
  "async-stream",
  "async-trait",
- "base64",
  "bytes",
  "chrono",
  "claurst-core",
  "futures",
  "hex",
  "hmac",
- "once_cell",
- "parking_lot",
  "reqwest",
  "serde",
  "serde_json",
  "sha2",
- "thiserror 2.0.18",
  "tokio",
- "tokio-stream",
  "tracing",
  "url",
  "urlencoding",
@@ -663,14 +657,9 @@ name = "claurst-bridge"
 version = "0.0.8"
 dependencies = [
  "anyhow",
- "async-trait",
  "base64",
  "chrono",
- "claurst-api",
- "claurst-core",
- "claurst-query",
  "dirs",
- "futures",
  "hex",
  "hostname",
  "parking_lot",
@@ -679,9 +668,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "thiserror 2.0.18",
  "tokio",
- "tokio-stream",
  "tokio-util",
  "tracing",
  "uuid",
@@ -693,8 +680,6 @@ version = "0.0.8"
 dependencies = [
  "anyhow",
  "chrono",
- "claurst-core",
- "hex",
  "serde",
  "serde_json",
  "tempfile",
@@ -714,7 +699,6 @@ dependencies = [
  "claurst-core",
  "claurst-mcp",
  "claurst-plugins",
- "claurst-query",
  "claurst-tools",
  "claurst-tui",
  "dirs",
@@ -755,7 +739,6 @@ dependencies = [
  "regex",
  "reqwest",
  "rusqlite",
- "schemars",
  "serde",
  "serde_json",
  "sha2",
@@ -764,7 +747,6 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "tokio-util",
- "toml",
  "tracing",
  "url",
  "urlencoding",
@@ -785,19 +767,15 @@ dependencies = [
  "futures",
  "getrandom 0.2.17",
  "once_cell",
- "parking_lot",
  "reqwest",
  "serde",
  "serde_json",
  "sha2",
- "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
- "tokio-util",
  "tracing",
  "url",
  "urlencoding",
- "uuid",
 ]
 
 [[package]]
@@ -805,13 +783,10 @@ name = "claurst-plugins"
 version = "0.0.8"
 dependencies = [
  "anyhow",
- "async-trait",
  "claurst-core",
  "dirs",
  "futures",
  "hex",
- "once_cell",
- "parking_lot",
  "reqwest",
  "serde",
  "serde_json",
@@ -841,13 +816,10 @@ dependencies = [
  "dirs",
  "futures",
  "once_cell",
- "parking_lot",
  "serde",
  "serde_json",
  "tempfile",
- "thiserror 2.0.18",
  "tokio",
- "tokio-stream",
  "tokio-util",
  "tracing",
  "uuid",
@@ -857,10 +829,8 @@ dependencies = [
 name = "claurst-tools"
 version = "0.0.8"
 dependencies = [
- "anyhow",
  "async-trait",
  "base64",
- "bytes",
  "chrono",
  "claurst-api",
  "claurst-core",
@@ -870,7 +840,6 @@ dependencies = [
  "enigo",
  "futures",
  "glob",
- "nix 0.29.0",
  "once_cell",
  "open",
  "parking_lot",
@@ -879,16 +848,11 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "similar",
- "tempfile",
- "thiserror 2.0.18",
  "tokio",
- "tokio-stream",
  "tokio-util",
  "tracing",
  "uuid",
  "walkdir",
- "which",
  "xcap",
 ]
 
@@ -908,7 +872,6 @@ dependencies = [
  "crossterm",
  "dashmap",
  "dirs",
- "futures",
  "hound",
  "icy_sixel",
  "image",
@@ -1325,12 +1288,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 
 [[package]]
-name = "dyn-clone"
-version = "1.0.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
-
-[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1352,12 +1309,6 @@ dependencies = [
  "xkbcommon",
  "xkeysym",
 ]
-
-[[package]]
-name = "env_home"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7f84e12ccf0a7ddc17a6c41c93326024c42920d7ee630d04950e6926645c0fe"
 
 [[package]]
 name = "equator"
@@ -1392,7 +1343,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2637,7 +2588,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3492,7 +3443,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3541,30 +3492,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "91c1b7e4904c873ef0710c1f407dde2e6287de2bebc1bbbf7d430bb7cbffd939"
 dependencies = [
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "schemars"
-version = "0.8.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fbf2ae1b8bc8e02df939598064d22402220cd5bbcca1c76f7d6a310974d5615"
-dependencies = [
- "dyn-clone",
- "schemars_derive",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "schemars_derive"
-version = "0.8.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32e265784ad618884abaea0600a9adf15393368d840e0222d101a072f3f7534d"
-dependencies = [
- "proc-macro2",
- "quote",
- "serde_derive_internals",
- "syn",
 ]
 
 [[package]]
@@ -3626,17 +3553,6 @@ name = "serde_derive"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d540f220d3187173da220f885ab66608367b6574e925011a9353e4badda91d79"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "serde_derive_internals"
-version = "0.29.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18d26a20a969b9e3fdf2fc2d9f21eda6c40e2de84c9408bb5d3b05d499aae711"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3812,7 +3728,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3940,7 +3856,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4599,18 +4515,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
 
 [[package]]
-name = "which"
-version = "7.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24d643ce3fd3e5b54854602a080f34fb10ab75e0b813ee32d00ca2b44fa74762"
-dependencies = [
- "either",
- "env_home",
- "rustix 1.1.4",
- "winsafe",
-]
-
-[[package]]
 name = "wide"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4642,7 +4546,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5205,12 +5109,6 @@ checksum = "80d0f4e272c85def139476380b12f9ac60926689dd2e01d4923222f40580869d"
 dependencies = [
  "winapi",
 ]
-
-[[package]]
-name = "winsafe"
-version = "0.0.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d135d17ab770252ad95e9a872d365cf3090e3be864a34ab46f48555993efc904"
 
 [[package]]
 name = "wit-bindgen"

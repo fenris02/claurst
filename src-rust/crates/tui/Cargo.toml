@@ -66,7 +66,6 @@ claurst-tools = { workspace = true }
 crossterm     = { workspace = true }
 dashmap       = { workspace = true }
 dirs          = { workspace = true }
-futures       = { workspace = true }
 icy_sixel     = { workspace = true }
 image         = { workspace = true }
 once_cell     = { workspace = true }

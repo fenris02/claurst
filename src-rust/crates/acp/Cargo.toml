@@ -9,7 +9,6 @@ version.workspace      = true
 
 [dependencies]
 anyhow       = { workspace = true }
-async-trait  = { workspace = true }
 chrono       = { workspace = true }
 claurst-api  = { workspace = true }
 claurst-core = { workspace = true }
