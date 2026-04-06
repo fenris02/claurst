@@ -822,7 +822,7 @@ pub mod client {
                     "notifications/resources/updated" => {
                         let uri = raw["params"]["uri"].as_str().unwrap_or("").to_string();
                         let key = (self.server_name.clone(), uri.clone());
-                        if let Some(tx) = resource_subscriptions.get(&key) {
+                        match resource_subscriptions.get(&key) { Some(tx) => {
                             let event = ResourceChangedEvent {
                                 server_name: self.server_name.clone(),
                                 uri,
@@ -834,13 +834,13 @@ pub mod client {
                                     "poll_notifications: resource subscription receiver dropped"
                                 );
                             }
-                        } else {
+                        } _ => {
                             debug!(
                                 server = %self.server_name,
                                 uri = %raw["params"]["uri"],
                                 "poll_notifications: no subscriber for resource update"
                             );
-                        }
+                        }}
                     }
                     "notifications/tools/list_changed" => {
                         info!(server = %self.server_name, "MCP tools list changed");
@@ -883,7 +883,7 @@ pub mod client {
                 "notifications/resources/updated" => {
                     let uri = raw["params"]["uri"].as_str().unwrap_or("").to_string();
                     let key = (self.server_name.clone(), uri.clone());
-                    if let Some(tx) = resource_subscriptions.get(&key) {
+                    match resource_subscriptions.get(&key) { Some(tx) => {
                         let event = ResourceChangedEvent {
                             server_name: self.server_name.clone(),
                             uri,
@@ -895,13 +895,13 @@ pub mod client {
                                 "process_notification: resource subscription receiver dropped"
                             );
                         }
-                    } else {
+                    } _ => {
                         debug!(
                             server = %self.server_name,
                             uri = %raw["params"]["uri"],
                             "process_notification: no subscriber for resource update"
                         );
-                    }
+                    }}
                 }
                 "notifications/tools/list_changed" => {
                     info!(server = %self.server_name, "MCP tools list changed");
@@ -1600,22 +1600,26 @@ mod tests {
 
     #[test]
     fn test_expand_env_vars_known_var() {
-        std::env::set_var("_CC_TEST_VAR", "rustacean");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("_CC_TEST_VAR", "rustacean") };
         let out = expand_env_vars("hello ${_CC_TEST_VAR}!");
         assert_eq!(out, "hello rustacean!");
-        std::env::remove_var("_CC_TEST_VAR");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("_CC_TEST_VAR") };
     }
 
     #[test]
     fn test_expand_env_vars_default_value() {
-        std::env::remove_var("_CC_MISSING_VAR");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("_CC_MISSING_VAR") };
         let out = expand_env_vars("val=${_CC_MISSING_VAR:-fallback}");
         assert_eq!(out, "val=fallback");
     }
 
     #[test]
     fn test_expand_env_vars_missing_no_default() {
-        std::env::remove_var("_CC_REALLY_MISSING");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("_CC_REALLY_MISSING") };
         // Missing with no default → keep original
         let out = expand_env_vars("${_CC_REALLY_MISSING}");
         assert_eq!(out, "${_CC_REALLY_MISSING}");
@@ -1623,17 +1627,22 @@ mod tests {
 
     #[test]
     fn test_expand_env_vars_multiple() {
-        std::env::set_var("_CC_A", "foo");
-        std::env::set_var("_CC_B", "bar");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("_CC_A", "foo") };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("_CC_B", "bar") };
         let out = expand_env_vars("${_CC_A}/${_CC_B}");
         assert_eq!(out, "foo/bar");
-        std::env::remove_var("_CC_A");
-        std::env::remove_var("_CC_B");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("_CC_A") };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("_CC_B") };
     }
 
     #[test]
     fn test_expand_server_config() {
-        std::env::set_var("_CC_TEST_HOME", "/home/user");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("_CC_TEST_HOME", "/home/user") };
         let cfg = McpServerConfig {
             name: "test".to_string(),
             command: Some("${_CC_TEST_HOME}/bin/server".to_string()),
@@ -1650,7 +1659,8 @@ mod tests {
         assert_eq!(expanded.command.as_deref(), Some("/home/user/bin/server"));
         assert_eq!(expanded.args[1], "/home/user");
         assert_eq!(expanded.env.get("PATH").map(|s| s.as_str()), Some("/home/user/bin"));
-        std::env::remove_var("_CC_TEST_HOME");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("_CC_TEST_HOME") };
     }
 
     // ---- JSON-RPC -----------------------------------------------------------

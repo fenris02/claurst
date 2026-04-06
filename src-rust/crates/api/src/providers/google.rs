@@ -307,7 +307,7 @@ impl GoogleProvider {
                 // Array items: ensure a type field is present.
                 if schema_type.as_deref() == Some("array") {
                     if let Some(items) = map.get_mut("items") {
-                        if let Value::Object(ref mut items_map) = items {
+                        if let Value::Object(items_map) = items {
                             if !items_map.contains_key("type") {
                                 items_map
                                     .insert("type".to_string(), Value::String("string".to_string()));
