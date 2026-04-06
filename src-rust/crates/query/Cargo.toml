@@ -1,29 +1,35 @@
 [package]
-name = "claurst-query"
-version.workspace = true
-edition.workspace = true
+authors.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+name                   = "claurst-query"
+rust-version.workspace = true
+version.workspace      = true
+
+[lints]
+workspace = true
 
 [dependencies]
-claurst-core = { workspace = true }
-claurst-api = { workspace = true }
+anyhow          = { workspace = true }
+async-trait     = { workspace = true }
+chrono          = { workspace = true }
+claurst-api     = { workspace = true }
+claurst-core    = { workspace = true }
 claurst-plugins = { workspace = true }
-claurst-tools = { workspace = true }
-tokio = { workspace = true }
-tokio-stream = { workspace = true }
-futures = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-anyhow = { workspace = true }
-thiserror = { workspace = true }
-tracing = { workspace = true }
-async-trait = { workspace = true }
-uuid = { workspace = true }
-chrono = { workspace = true }
-dirs = { workspace = true }
-parking_lot = { workspace = true }
-tokio-util = { workspace = true }
-once_cell = { workspace = true }
-dashmap = { workspace = true }
+claurst-tools   = { workspace = true }
+dashmap         = { workspace = true }
+dirs            = { workspace = true }
+futures         = { workspace = true }
+once_cell       = { workspace = true }
+parking_lot     = { workspace = true }
+serde           = { workspace = true }
+serde_json      = { workspace = true }
+thiserror       = { workspace = true }
+tokio           = { workspace = true }
+tokio-stream    = { workspace = true }
+tokio-util      = { workspace = true }
+tracing         = { workspace = true }
+uuid            = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

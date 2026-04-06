@@ -1,41 +1,45 @@
 [package]
-name = "claurst-plugins"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
-description = "Plugin runtime for the Claurst CLI"
+authors.workspace      = true
+description            = "Plugin runtime for the Claurst CLI"
+edition.workspace      = true
+license.workspace      = true
+name                   = "claurst-plugins"
+rust-version.workspace = true
+version.workspace      = true
+
+[lints]
+workspace = true
 
 [dependencies]
 claurst-core = { workspace = true }
 
 # Async
-tokio = { workspace = true }
 async-trait = { workspace = true }
-futures = { workspace = true }
+futures     = { workspace = true }
+tokio       = { workspace = true }
 
 # Serialization
-serde = { workspace = true }
+serde      = { workspace = true }
 serde_json = { workspace = true }
-toml = { workspace = true }
+toml       = { workspace = true }
 
 # Error handling
-anyhow = { workspace = true }
+anyhow    = { workspace = true }
 thiserror = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
 
 # Filesystem
+dirs    = { workspace = true }
 walkdir = { workspace = true }
-dirs = { workspace = true }
 
 # HTTP (marketplace downloads)
 reqwest = { workspace = true }
 
 # Hash verification
+hex  = { workspace = true }
 sha2 = { workspace = true }
-hex = { workspace = true }
 
 # URL encoding for search queries
 urlencoding = { workspace = true }
@@ -44,9 +48,9 @@ urlencoding = { workspace = true }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
 # Utilities
-once_cell = { workspace = true }
+once_cell   = { workspace = true }
 parking_lot = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
-tokio = { workspace = true }
+tokio    = { workspace = true }
