@@ -1,9 +1,9 @@
 /// claurst-buddy: Tamagotchi/Buddy companion system for Claurst.
 ///
-/// Ported from src/buddy/ (TypeScript). All bones (species, rarity, stats,
+/// Ported from src/buddy/ (`TypeScript`). All bones (species, rarity, stats,
 /// eye, hat, shiny) are deterministically derived from the user-ID via a
 /// seeded PRNG so they can never be edited by hand. The soul (name,
-/// personality, hatched_at) is AI-generated on first hatch and persisted in
+/// personality, `hatched_at`) is AI-generated on first hatch and persisted in
 /// `{config_dir}/companion.json`.
 use std::path::Path;
 
@@ -11,20 +11,21 @@ use std::path::Path;
 // Mulberry32 PRNG
 // ---------------------------------------------------------------------------
 
-/// Tiny, fast 32-bit PRNG — identical algorithm to the TypeScript version.
+/// Tiny, fast 32-bit PRNG — identical algorithm to the `TypeScript` version.
 /// Good enough for picking ducks.
 pub struct Mulberry32 {
     state: u32,
 }
 
 impl Mulberry32 {
+    #[must_use] 
     pub fn new(seed: u32) -> Self {
         Self { state: seed }
     }
 
     /// Returns next pseudo-random value in [0, 1).
     pub fn next_f64(&mut self) -> f64 {
-        self.next_u32() as f64 / 4_294_967_296.0
+        f64::from(self.next_u32()) / 4_294_967_296.0
     }
 
     /// Returns next raw u32.
@@ -39,13 +40,14 @@ impl Mulberry32 {
 /// Derive a deterministic u32 seed from a user-id string.
 ///
 /// Algorithm: FNV-1a 32-bit over the raw bytes of `user_id`.
-/// Matches the TypeScript `hashString` FNV-1a implementation used in Bun.
+/// Matches the `TypeScript` `hashString` FNV-1a implementation used in Bun.
+#[must_use] 
 pub fn seed_from_user_id(user_id: &str) -> u32 {
     const FNV_OFFSET_BASIS: u32 = 2_166_136_261;
     const FNV_PRIME: u32 = 16_777_619;
     let mut hash = FNV_OFFSET_BASIS;
     for byte in user_id.bytes() {
-        hash ^= byte as u32;
+        hash ^= u32::from(byte);
         hash = hash.wrapping_mul(FNV_PRIME);
     }
     hash
@@ -79,7 +81,8 @@ pub enum Species {
 }
 
 impl Species {
-    /// Display name (lower-case, matches TypeScript SPECIES array).
+    /// Display name (lower-case, matches `TypeScript` SPECIES array).
+    #[must_use] 
     pub fn as_str(&self) -> &'static str {
         match self {
             Species::Duck => "duck",
@@ -104,7 +107,7 @@ impl Species {
     }
 
     fn all() -> &'static [Species] {
-        use Species::*;
+        use Species::{Duck, Goose, Blob, Cat, Dragon, Octopus, Owl, Penguin, Turtle, Snail, Ghost, Axolotl, Capybara, Cactus, Robot, Rabbit, Mushroom, Chonk};
         &[
             Duck, Goose, Blob, Cat, Dragon, Octopus, Owl, Penguin, Turtle, Snail, Ghost, Axolotl,
             Capybara, Cactus, Robot, Rabbit, Mushroom, Chonk,
@@ -123,6 +126,7 @@ pub enum Rarity {
 }
 
 impl Rarity {
+    #[must_use] 
     pub fn as_str(&self) -> &'static str {
         match self {
             Rarity::Common => "common",
@@ -133,6 +137,7 @@ impl Rarity {
         }
     }
 
+    #[must_use] 
     pub fn stars(&self) -> &'static str {
         match self {
             Rarity::Common => "★",
@@ -173,6 +178,7 @@ pub enum Eye {
 }
 
 impl Eye {
+    #[must_use] 
     pub fn glyph(&self) -> &'static str {
         match self {
             Eye::Dot => "·",
@@ -185,7 +191,7 @@ impl Eye {
     }
 
     fn all() -> &'static [Eye] {
-        use Eye::*;
+        use Eye::{Dot, Star, X, Circle, At, Degree};
         &[Dot, Star, X, Circle, At, Degree]
     }
 }
@@ -205,6 +211,7 @@ pub enum Hat {
 
 impl Hat {
     /// The hat decoration line (12 chars wide). Empty string for `None`.
+    #[must_use] 
     pub fn hat_line(&self) -> &'static str {
         match self {
             Hat::None => "",
@@ -221,7 +228,7 @@ impl Hat {
     /// All hat variants — `None` is included once; the roll logic gives it
     /// extra weight by checking `rarity == common` separately.
     fn all() -> &'static [Hat] {
-        use Hat::*;
+        use Hat::{None, Crown, Tophat, Propeller, Halo, Wizard, Beanie, TinyDuck};
         &[
             None, Crown, Tophat, Propeller, Halo, Wizard, Beanie, TinyDuck,
         ]
@@ -247,7 +254,7 @@ impl CompanionStats {
     /// One stat is the "peak" (boosted by +50..+79), one is the "dump"
     /// (lowered), the rest scatter around the floor.
     pub fn roll(rarity: &Rarity, rng: &mut Mulberry32) -> Self {
-        let floor = rarity.stat_floor() as f64;
+        let floor = f64::from(rarity.stat_floor());
 
         // Pick distinct peak and dump stat indices (0-4).
         let peak_idx = (rng.next_f64() * 5.0) as usize % 5;
@@ -298,6 +305,7 @@ pub struct CompanionBones {
 
 impl CompanionBones {
     /// Deterministically roll all bones from a user-id string.
+    #[must_use] 
     pub fn from_user_id(user_id: &str) -> Self {
         let mut rng = Mulberry32::new(seed_from_user_id(user_id));
         Self::roll(&mut rng)
@@ -391,6 +399,7 @@ pub struct Companion {
 }
 
 impl Companion {
+    #[must_use] 
     pub fn new(user_id: &str, soul: Option<CompanionSoul>) -> Self {
         Companion {
             bones: CompanionBones::from_user_id(user_id),
@@ -400,6 +409,7 @@ impl Companion {
 
     /// Returns the companion's given name, or the species name if not yet
     /// hatched.
+    #[must_use] 
     pub fn display_name(&self) -> &str {
         match &self.soul {
             Some(s) => s.name.as_str(),
@@ -420,10 +430,11 @@ pub struct SpriteFrame(pub [&'static str; 5]);
 
 /// Return the three animation frames for a given species.
 ///
-/// Frames are literal copies of the TypeScript BODIES table.  Each line is
+/// Frames are literal copies of the `TypeScript` BODIES table.  Each line is
 /// 12 characters wide (after `{E}` substitution).  Line 0 is the "hat slot":
 /// if it is blank in a frame the hat decoration is injected there; if it
 /// contains content (smoke, antenna, etc.) the hat is skipped.
+#[must_use] 
 pub fn get_sprite_frames(species: &Species) -> [SpriteFrame; 3] {
     match species {
         Species::Duck => [
@@ -845,11 +856,12 @@ pub fn get_sprite_frames(species: &Species) -> [SpriteFrame; 3] {
 
 /// Map a clock tick (500 ms steps) to a frame index (0, 1, or 2).
 ///
-/// Mirrors the TypeScript idle-fidget sequence:
+/// Mirrors the `TypeScript` idle-fidget sequence:
 /// `[0,0,0,0,1,0,0,0,-1→2,0,0,2,0,0,0]` cycling at length 15.
 ///
 /// The `-1` entry in the TS source is an explicit reference to frame 2; we
 /// represent it directly as 2.
+#[must_use] 
 pub fn animation_frame(tick: u64) -> usize {
     const SEQ: [usize; 15] = [0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 2, 0, 0, 0];
     SEQ[(tick as usize) % SEQ.len()]
@@ -860,7 +872,8 @@ pub fn animation_frame(tick: u64) -> usize {
 /// - Substitutes the companion's eye glyph into `{E}` placeholders.
 /// - Overlays the hat on line 0 when line 0 is blank in the chosen frame.
 /// - Drops a blank line-0 when *all* three frames have blank line 0 (no hat and no per-frame
-///   animation content), matching the TypeScript behaviour that avoids wasted rows.
+///   animation content), matching the `TypeScript` behaviour that avoids wasted rows.
+#[must_use] 
 pub fn render(companion: &Companion, tick: u64) -> String {
     let frames = get_sprite_frames(&companion.bones.species);
     let frame_idx = animation_frame(tick);
@@ -889,25 +902,26 @@ pub fn render(companion: &Companion, tick: u64) -> String {
 /// Render the face description for a companion (used in speech-bubble context).
 ///
 /// Matches the `renderFace` function in `sprites.ts`.
+#[must_use] 
 pub fn render_face(bones: &CompanionBones) -> String {
     let e = bones.eye.glyph();
     match bones.species {
-        Species::Duck | Species::Goose => format!("({}> ", e),
-        Species::Blob => format!("({}{})", e, e),
-        Species::Cat => format!("={}ω{}=", e, e),
-        Species::Dragon => format!("<{}~{}>", e, e),
-        Species::Octopus => format!("~({}{})~", e, e),
-        Species::Owl => format!("({})({})", e, e),
-        Species::Penguin => format!("({}>)", e),
-        Species::Turtle => format!("[{}_{}]", e, e),
-        Species::Snail => format!("{}(@)", e),
-        Species::Ghost => format!("/{}{}\\ ", e, e),
-        Species::Axolotl => format!("}}{}. {}{{", e, e),
-        Species::Capybara => format!("({}oo{})", e, e),
-        Species::Cactus | Species::Mushroom => format!("|{}  {}|", e, e),
-        Species::Robot => format!("[{}{}]", e, e),
-        Species::Rabbit => format!("({}..{})", e, e),
-        Species::Chonk => format!("({}.{})", e, e),
+        Species::Duck | Species::Goose => format!("({e}> "),
+        Species::Blob => format!("({e}{e})"),
+        Species::Cat => format!("={e}ω{e}="),
+        Species::Dragon => format!("<{e}~{e}>"),
+        Species::Octopus => format!("~({e}{e})~"),
+        Species::Owl => format!("({e})({e})"),
+        Species::Penguin => format!("({e}>)"),
+        Species::Turtle => format!("[{e}_{e}]"),
+        Species::Snail => format!("{e}(@)"),
+        Species::Ghost => format!("/{e}{e}\\ "),
+        Species::Axolotl => format!("}}{e}. {e}{{"),
+        Species::Capybara => format!("({e}oo{e})"),
+        Species::Cactus | Species::Mushroom => format!("|{e}  {e}|"),
+        Species::Robot => format!("[{e}{e}]"),
+        Species::Rabbit => format!("({e}..{e})"),
+        Species::Chonk => format!("({e}.{e})"),
     }
 }
 
@@ -947,6 +961,7 @@ impl From<StoredCompanion> for CompanionSoul {
 
 /// Load a companion soul from `{config_dir}/companion.json`.
 /// Returns `None` if the file does not exist or cannot be parsed.
+#[must_use] 
 pub fn load_companion_soul(config_dir: &Path) -> Option<CompanionSoul> {
     let path = config_dir.join("companion.json");
     let bytes = std::fs::read(&path).ok()?;
@@ -969,7 +984,8 @@ pub fn save_companion_soul(config_dir: &Path, soul: &CompanionSoul) -> anyhow::R
 
 /// Reconstruct a `Companion` from a user-id string and the stored soul (if
 /// any).  This is the main entry point for callers — mirrors `getCompanion()`
-/// in the TypeScript source.
+/// in the `TypeScript` source.
+#[must_use] 
 pub fn get_companion(user_id: &str, config_dir: &Path) -> Companion {
     let soul = load_companion_soul(config_dir);
     Companion::new(user_id, soul)
@@ -980,6 +996,7 @@ pub fn get_companion(user_id: &str, config_dir: &Path) -> Companion {
 // ---------------------------------------------------------------------------
 
 /// System-prompt fragment injected when a companion is active.
+#[must_use] 
 pub fn companion_intro_text(name: &str, species: &str) -> String {
     format!(
         "# Companion\n\n\
